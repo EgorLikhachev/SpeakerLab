@@ -1,0 +1,188 @@
+# English
+menu.file: File
+menu.new: New project
+menu.open: Open…
+menu.save: Save
+menu.saveas: Save as…
+menu.export_csv: Export curves to CSV…
+menu.library: Driver library
+top.voltage: Voltage
+
+driver.title: Driver
+driver.name: Name
+driver.manufacturer: Manufacturer
+driver.ts: Thiele-Small parameters
+driver.re: "Re (resistance)"
+driver.le: "Le (inductance)"
+driver.fs: "Fs (resonance)"
+driver.qms: "Qms"
+driver.qes: "Qes"
+driver.vas: "Vas (eq. volume)"
+driver.sd: "Sd (area)"
+driver.xmax: "Xmax"
+driver.pe: "P (power)"
+driver.spl: "SPL (sensitivity)"
+driver.derived: Derived
+driver.qts: "Qts"
+driver.bl: "Bl"
+driver.mms: "Mms"
+driver.ebp: "EBP"
+driver.issue.nonpositive: "Parameter “%{field}” must be positive"
+driver.issue.qts_high: Qts > 0.6 — better suited for a sealed box
+driver.issue.qts_low: Qts < 0.25 — suits vented/horn; sealed box would be huge
+driver.issue.ebp: "EBP = %{value}: >90 — vented, <50 — sealed"
+driver.save_library: Save to library
+driver.load_library: Library…
+
+enc.sealed: Sealed box
+enc.vented: Bass-reflex
+enc.pr: Passive radiator
+enc.pr.vb: "Volume Vb"
+enc.pr.mass: "PR mass"
+enc.pr.sd: "PR Sd"
+enc.pr.fs: "PR Fs"
+enc.bp4: Bandpass 4
+enc.bp6: Bandpass 6
+enc.bp.rear: "Rear chamber"
+enc.bp.front: "Front chamber"
+enc.bp.fb: "Port Fb"
+enc.bp.fb_rear: "Fb rear"
+enc.bp.fb_front: "Fb front"
+enc.tl: TL / QW / Horn
+enc.adv: Advanced
+enc.sealed.vb: "Volume Vb"
+enc.sealed.qa: "Box losses Qa"
+enc.sealed.fill: Filling
+enc.vented.vb: "Volume Vb"
+enc.vented.fb: "Tuning Fb"
+enc.vented.ql: "Box losses Ql"
+enc.vented.port_open: Port calculator…
+enc.vented.port_none: No port defined — open the port calculator
+fill.none: none
+fill.light: light
+fill.medium: medium
+fill.heavy: heavy
+
+suggest.title: "Suggestions:"
+suggest.apply: Apply to project
+suggest.pr_mass: "mass for F"
+suggest.sealed.qtc0577: "Qtc 0.58"
+suggest.sealed.qtc0707: "Qtc 0.71 (Butterworth)"
+suggest.sealed.qtc09: "Qtc 0.90"
+suggest.sealed.qtc12: "Qtc 1.20"
+suggest.vented.flat: flat response
+suggest.vented.compact: compact
+suggest.vented.ebs: extended bass
+
+plot.spl: SPL
+plot.impedance: Impedance
+plot.phase: Z phase
+plot.excursion: Excursion
+plot.portvel: Port velocity
+plot.groupdelay: Group delay
+plot.freq: Frequency
+plot.spl.y: "dB SPL (2.83 V, 1 m)"
+plot.z.y: "Ω"
+plot.phase.y: "degrees"
+plot.exc.y: "mm peak"
+plot.vel.y: "m/s"
+plot.gd.y: "ms"
+plot.marker_fc: fc
+plot.marker_fb: Fb
+plot.marker_fb2: Fb2
+plot.marker_qw: λ/4
+plot.xmax_line: Xmax
+plot.vel.caution: 17 m/s
+plot.vel.excessive: 22 m/s
+
+sum.peak: Peak SPL
+sum.f3: F3 low
+sum.f3h: F3 high
+sum.band: band
+sum.fc: fc
+sum.qtc: Qtc
+sum.fb: Fb
+sum.fb2: Fb front
+sum.qw: f(λ/4)
+sum.volume: volume
+sum.alpha: α (Vas/Vb)
+sum.zmax: "|Z| max"
+sum.exc_max: Max excursion
+sum.vel_max: Port velocity
+sum.power: Power
+
+ref.set: "Keep as reference"
+ref.clear: "Drop reference"
+plot.ref: reference
+
+boxcalc.title: Box dimensions
+boxcalc.sync: Sync from project
+boxcalc.net: "Net volume"
+boxcalc.driver: "Driver, l"
+boxcalc.port: "Port, l"
+boxcalc.brace: "Braces, l"
+boxcalc.wall: "Wall thickness"
+boxcalc.mode: Mode
+boxcalc.by_ratio: by ratio
+boxcalc.two_dims: two dimensions
+boxcalc.width: Width
+boxcalc.height: Height
+boxcalc.gross: gross
+boxcalc.panel_area: panels, m²
+ratio.golden: golden ratio
+ratio.cube: cube
+ratio.tower: tower
+ratio.square: cube (1:1:1)
+
+line.presets: "Presets:"
+line.preset.straight: straight TL
+line.preset.tapered: tapered TL
+line.preset.horn: horn
+line.preset.qw: QW
+line.length: length
+line.area_start: S start
+line.area_end: S end
+line.stuffing: stuffing
+line.add: "+ segment"
+line.wall_loss: "Line losses (0–1.5)"
+
+warn.xmax: "⚠ Excursion %{value} mm exceeds Xmax %{limit} mm at %{freq} Hz — reduce voltage"
+warn.vel.caution: "⚠ Port velocity %{v} m/s — audible noise possible"
+warn.vel.excessive: "⚠ Port velocity %{v} m/s — chuffing, increase port area"
+
+portcalc.title: Port calculator
+portcalc.mode: Mode
+portcalc.mode.tolength: length from Fb
+portcalc.mode.tofb: Fb from length
+portcalc.vb: "Volume Vb"
+portcalc.fb: "Tuning Fb"
+portcalc.shape: Shape
+portcalc.round: round
+portcalc.slot: slot
+portcalc.diameter: Diameter
+portcalc.width: Width
+portcalc.height: Height
+portcalc.count: Count
+portcalc.ec: End correction
+ec.one_flanged: one flanged (0.732)
+ec.both_flanged: both flanged (0.85)
+ec.both_free: both free (0.61)
+portcalc.length: Length
+portcalc.area: Area
+portcalc.area_rec: rec. by Sd
+portcalc.apply: Apply to project
+portcalc.sync: Sync from project
+portcalc.apply_hint: Apply the port to the project to see air velocity
+portcalc.vel_ok: "Port air velocity: %{v} m/s — OK"
+portcalc.vel_caution: "Port air velocity: %{v} m/s — borderline"
+portcalc.vel_excessive: "Port air velocity: %{v} m/s — too high!"
+
+lib.title: Driver library
+lib.empty: Library is empty — save the current driver or import JSON
+lib.load: Load to project
+lib.delete: Delete
+lib.save_current: Save current
+lib.import: Import JSON…
+lib.export: Export JSON…
+
+sim.no_data: Enter valid Thiele-Small parameters

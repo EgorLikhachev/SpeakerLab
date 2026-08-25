@@ -1,0 +1,188 @@
+# Русский
+menu.file: Файл
+menu.new: Новый проект
+menu.open: Открыть…
+menu.save: Сохранить
+menu.saveas: Сохранить как…
+menu.export_csv: Экспорт кривых в CSV…
+menu.library: Библиотека динамиков
+top.voltage: Напряжение
+
+driver.title: Динамик
+driver.name: Название
+driver.manufacturer: Производитель
+driver.ts: T/S-параметры
+driver.re: "Re (сопротивление)"
+driver.le: "Le (индуктивность)"
+driver.fs: "Fs (резонанс)"
+driver.qms: "Qms"
+driver.qes: "Qes"
+driver.vas: "Vas (экв. объём)"
+driver.sd: "Sd (площадь)"
+driver.xmax: "Xmax (ход)"
+driver.pe: "P (мощность)"
+driver.spl: "SPL (чувств.)"
+driver.derived: Производные
+driver.qts: "Qts"
+driver.bl: "Bl"
+driver.mms: "Mms"
+driver.ebp: "EBP"
+driver.issue.nonpositive: "Параметр «%{field}» должен быть больше нуля"
+driver.issue.qts_high: Qts > 0.6 — динамик лучше подходит для закрытого ящика
+driver.issue.qts_low: Qts < 0.25 — для ФИ/рупора; ЗЯ будет очень крупным
+driver.issue.ebp: "EBP = %{value}: >90 — ФИ, <50 — ЗЯ"
+driver.save_library: Сохранить в библиотеку
+driver.load_library: Библиотека…
+
+enc.sealed: Закрытый ящик
+enc.vented: Фазоинвертор
+enc.pr: Пассивный излучатель
+enc.pr.vb: "Объём Vb"
+enc.pr.mass: "Масса ПИ"
+enc.pr.sd: "Sd (ПИ)"
+enc.pr.fs: "Fs (ПИ)"
+enc.bp4: Бандпасс 4
+enc.bp6: Бандпасс 6
+enc.bp.rear: "Задняя камера"
+enc.bp.front: "Передняя камера"
+enc.bp.fb: "Fb порта"
+enc.bp.fb_rear: "Fb задн."
+enc.bp.fb_front: "Fb передн."
+enc.tl: ТЛ / ЧВ / Рупор
+enc.adv: Дополнительно
+enc.sealed.vb: "Объём Vb"
+enc.sealed.qa: "Потери ящика Qa"
+enc.sealed.fill: Заполнение
+enc.vented.vb: "Объём Vb"
+enc.vented.fb: "Настройка Fb"
+enc.vented.ql: "Потери ящика Ql"
+enc.vented.port_open: Калькулятор порта…
+enc.vented.port_none: Порт не задан — откройте калькулятор порта
+fill.none: нет
+fill.light: лёгкое
+fill.medium: среднее
+fill.heavy: плотное
+
+suggest.title: "Подсказки:"
+suggest.apply: Применить к проекту
+suggest.pr_mass: "масса для F"
+suggest.sealed.qtc0577: "Qtc 0.58"
+suggest.sealed.qtc0707: "Qtc 0.71 (Баттерворт)"
+suggest.sealed.qtc09: "Qtc 0.90"
+suggest.sealed.qtc12: "Qtc 1.20"
+suggest.vented.flat: плоская АЧХ
+suggest.vented.compact: компактно
+suggest.vented.ebs: расширение баса
+
+plot.spl: SPL
+plot.impedance: Импеданс
+plot.phase: Фаза Z
+plot.excursion: Экскурсия
+plot.portvel: Скорость порта
+plot.groupdelay: Групповая задержка
+plot.freq: Частота
+plot.spl.y: "дБ SPL (2.83 В, 1 м)"
+plot.z.y: "Ом"
+plot.phase.y: "градусы"
+plot.exc.y: "мм (пик)"
+plot.vel.y: "м/с"
+plot.gd.y: "мс"
+plot.marker_fc: fc
+plot.marker_fb: Fb
+plot.marker_fb2: Fb2
+plot.marker_qw: λ/4
+plot.xmax_line: Xmax
+plot.vel.caution: 17 м/с
+plot.vel.excessive: 22 м/с
+
+sum.peak: Пик SPL
+sum.f3: F3 снизу
+sum.f3h: F3 сверху
+sum.band: полоса
+sum.fc: fc
+sum.qtc: Qtc
+sum.fb: Fb
+sum.fb2: Fb передн.
+sum.qw: f(λ/4)
+sum.volume: объём
+sum.alpha: α (Vas/Vb)
+sum.zmax: "|Z| макс"
+sum.exc_max: Ход макс
+sum.vel_max: Скорость порта
+sum.power: Мощность
+
+ref.set: "Запомнить как эталон"
+ref.clear: "Убрать эталон"
+plot.ref: эталон
+
+boxcalc.title: Размеры ящика
+boxcalc.sync: Подставить из проекта
+boxcalc.net: "Чистый объём"
+boxcalc.driver: "Динамик, л"
+boxcalc.port: "Порт, л"
+boxcalc.brace: "Распорки, л"
+boxcalc.wall: "Толщина стенки"
+boxcalc.mode: Режим
+boxcalc.by_ratio: по пропорции
+boxcalc.two_dims: два размера
+boxcalc.width: Ширина
+boxcalc.height: Высота
+boxcalc.gross: габаритный
+boxcalc.panel_area: панели, м²
+ratio.golden: золотое сечение
+ratio.cube: куб
+ratio.tower: башня
+ratio.square: куб (1:1:1)
+
+line.presets: "Пресеты:"
+line.preset.straight: прямая ТЛ
+line.preset.tapered: коническая ТЛ
+line.preset.horn: рупор
+line.preset.qw: ЧВ
+line.length: длина
+line.area_start: S нач.
+line.area_end: S кон.
+line.stuffing: набивка
+line.add: "+ сегмент"
+line.wall_loss: "Потери линии (0–1.5)"
+
+warn.xmax: "⚠ Ход %{value} мм превышает Xmax %{limit} мм при %{freq} Гц — уменьшите напряжение"
+warn.vel.caution: "⚠ Скорость в порте %{v} м/с — возможен шум"
+warn.vel.excessive: "⚠ Скорость в порте %{v} м/с — свист воздуха, увеличьте площадь порта"
+
+portcalc.title: Калькулятор порта
+portcalc.mode: Режим
+portcalc.mode.tolength: длина из Fb
+portcalc.mode.tofb: Fb из длины
+portcalc.vb: "Объём Vb"
+portcalc.fb: "Настройка Fb"
+portcalc.shape: Форма
+portcalc.round: круглая
+portcalc.slot: щель
+portcalc.diameter: Диаметр
+portcalc.width: Ширина
+portcalc.height: Высота
+portcalc.count: Количество
+portcalc.ec: Торцы
+ec.one_flanged: у стенки (0.732)
+ec.both_flanged: оба у стенок (0.85)
+ec.both_free: оба свободны (0.61)
+portcalc.length: Длина
+portcalc.area: Площадь
+portcalc.area_rec: рекоменд. по Sd
+portcalc.apply: Применить к проекту
+portcalc.sync: Подставить из проекта
+portcalc.apply_hint: Примените порт к проекту, чтобы увидеть скорость воздуха
+portcalc.vel_ok: "Скорость воздуха в порте: %{v} м/с — в норме"
+portcalc.vel_caution: "Скорость воздуха в порте: %{v} м/с — на грани"
+portcalc.vel_excessive: "Скорость воздуха в порте: %{v} м/с — слишком высоко!"
+
+lib.title: Библиотека динамиков
+lib.empty: Библиотека пуста — сохраните текущий динамик или импортируйте JSON
+lib.load: Загрузить в проект
+lib.delete: Удалить
+lib.save_current: Сохранить текущий
+lib.import: Импорт JSON…
+lib.export: Экспорт JSON…
+
+sim.no_data: Введите корректные T/S-параметры динамика
