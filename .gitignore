@@ -21,3 +21,6 @@ desktop.ini
 # ZCode session files
 .zcode/
 crash.log
+win.log
+msrv.log
+crash.log
