@@ -70,6 +70,13 @@ pub struct LineBox {
     pub closed_end_area_cm2: f64,
     /// Безразмерные потери на стенках/утечки (0 — идеальная линия; 0.35 — типично)
     pub wall_loss: f64,
+    /// Смещение динамика от закрытого конца, м (0 — у конца).
+    /// Участок [0..offset] работает закрытой заглушкой параллельно линии.
+    #[serde(default)]
+    pub driver_offset_m: f64,
+    /// Обём камеры горла (горло перед линией), л. 0 — нет камеры.
+    #[serde(default)]
+    pub throat_chamber_l: f64,
 }
 
 impl Default for LineBox {
@@ -98,6 +105,8 @@ impl Default for LineBox {
             ],
             closed_end_area_cm2: 220.0,
             wall_loss: 0.35,
+            driver_offset_m: 0.0,
+            throat_chamber_l: 0.0,
         }
     }
 }
@@ -186,6 +195,90 @@ impl LineBox {
         [[ch, z0 * sh], [sh / z0, ch]]
     }
 
+    /// Разбить сегменты на закрытую часть [0..offset] и основную [offset..L].
+    /// Сегмент, пересекаемый смещением, делится на два (линейная интерполяция
+    /// площади по длине).
+    fn split_segments(&self) -> (Vec<Segment>, Vec<Segment>) {
+        let off = self.driver_offset_m.max(0.0);
+        if off <= 0.0 {
+            return (Vec::new(), self.segments.clone());
+        }
+        let mut stub = Vec::new();
+        let mut main = Vec::new();
+        let mut acc = 0.0;
+        for seg in &self.segments {
+            let len = seg.length_m.max(0.0);
+            if len <= 0.0 {
+                continue;
+            }
+            if acc + len <= off + 1e-9 {
+                stub.push(seg.clone());
+            } else if acc >= off - 1e-9 {
+                main.push(seg.clone());
+            } else {
+                // деление сегмента
+                let t = (off - acc) / len;
+                let a_mid = seg.area_start_cm2 + (seg.area_end_cm2 - seg.area_start_cm2) * t;
+                stub.push(Segment {
+                    length_m: off - acc,
+                    area_start_cm2: seg.area_start_cm2,
+                    area_end_cm2: a_mid,
+                    stuffing_kgm3: seg.stuffing_kgm3,
+                });
+                main.push(Segment {
+                    length_m: acc + len - off,
+                    area_start_cm2: a_mid,
+                    area_end_cm2: seg.area_end_cm2,
+                    stuffing_kgm3: seg.stuffing_kgm3,
+                });
+            }
+            acc += len;
+        }
+        (stub, main)
+    }
+
+    /// Каскад матриц произвольного списка сегментов.
+    fn chain_of(segs: &[Segment], omega: f64, wall_loss: f64) -> [[Complex64; 2]; 2] {
+        let mut m = [
+            [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+            [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
+        ];
+        for seg in segs {
+            if seg.length_m <= 0.0 {
+                continue;
+            }
+            m = mat_mul(m, Self::segment_matrix(seg, omega, wall_loss));
+        }
+        m
+    }
+
+    /// Импеданс закрытой заглушки (нагрузка « холостого хода»): Z = A/C.
+    fn stub_impedance(segs: &[Segment], omega: f64, wall_loss: f64) -> Option<Complex64> {
+        if segs.iter().all(|s| s.length_m <= 0.0) {
+            return None; // заглушки нет
+        }
+        let m = Self::chain_of(segs, omega, wall_loss);
+        if m[1][0].norm_sqr() < 1e-30 {
+            return Some(Complex64::new(1e12, 0.0));
+        }
+        Some(m[0][0] / m[1][0])
+    }
+
+    /// Импеданс основной линии от точки смещения до устья.
+    fn main_impedance(
+        segs: &[Segment],
+        omega: f64,
+        wall_loss: f64,
+        z_rad: Complex64,
+    ) -> Complex64 {
+        let m = Self::chain_of(segs, omega, wall_loss);
+        let denom = m[1][0] * z_rad + m[1][1];
+        if denom.norm_sqr() < 1e-30 {
+            return Complex64::new(1e12, 0.0);
+        }
+        (m[0][0] * z_rad + m[0][1]) / denom
+    }
+
     /// Каскад всех сегментов.
     fn chain(&self, omega: f64) -> [[Complex64; 2]; 2] {
         let mut m = [
@@ -212,31 +305,76 @@ impl LineBox {
         char_z * Complex64::new(kr * kr / 2.0, 0.6133 * kr)
     }
 
-    /// Входной импеданс линии с нагрузкой излучением.
+    /// Входной импеданс линии (с учётом смещения динамика и камеры горла).
     pub fn input_impedance(&self, omega: f64) -> Complex64 {
         if self.segments.is_empty() {
             return Complex64::new(1e12, 0.0); // заглушка: жёсткая стенка
         }
-        let m = self.chain(omega);
         let z_rad = self.radiation_impedance(omega);
+        if self.driver_offset_m > 1e-6 {
+            let (stub, main) = self.split_segments();
+            let z_main = Self::main_impedance(&main, omega, self.wall_loss, z_rad);
+            let z = match Self::stub_impedance(&stub, omega, self.wall_loss) {
+                Some(zs) => crate::parallel(z_main, zs),
+                None => z_main,
+            };
+            return self.with_throat(z, omega);
+        }
+        let m = self.chain(omega);
         // [p_in; U_in] = M·[p_m; U_m], p_m = Z_rad·U_m
-        // p_in = (M00·Z_rad + M01)·U_m; U_in = (M10·Z_rad + M11)·U_m
         let denom = m[1][0] * z_rad + m[1][1];
         if denom.norm_sqr() < 1e-30 {
             return Complex64::new(1e12, 0.0);
         }
-        (m[0][0] * z_rad + m[0][1]) / denom
+        let z = (m[0][0] * z_rad + m[0][1]) / denom;
+        self.with_throat(z, omega)
     }
 
-    /// Объёмная скорость устья при данной объёмной скорости на входе.
-    fn mouth_velocity_flow(&self, u_in: Complex64, omega: f64) -> Complex64 {
-        let m = self.chain(omega);
+    /// Последовательная податливость камеры горла (если задана).
+    fn with_throat(&self, z: Complex64, omega: f64) -> Complex64 {
+        if self.throat_chamber_l > 1e-6 {
+            let c_at = crate::air_compliance(self.throat_chamber_l / 1.0e3);
+            z + Complex64::new(0.0, -1.0 / (omega * c_at))
+        } else {
+            z
+        }
+    }
+
+    /// Объёмная скорость устья при потоке u_in, входящем в основную линию
+    /// (при смещённом драйвере — доля общего потока, идущая в линию).
+    fn mouth_flow_of(&self, u_line: Complex64, omega: f64) -> Complex64 {
+        let main = if self.driver_offset_m > 1e-6 {
+            self.split_segments().1
+        } else {
+            self.segments.clone()
+        };
+        let m = Self::chain_of(&main, omega, self.wall_loss);
         let z_rad = self.radiation_impedance(omega);
         let denom = m[1][0] * z_rad + m[1][1];
         if denom.norm_sqr() < 1e-30 {
             return Complex64::new(0.0, 0.0);
         }
-        u_in / denom
+        u_line / denom
+    }
+
+    /// Поток, отходящий в основную линию, при полном потоке драйвера u_total.
+    fn line_share(&self, u_total: Complex64, omega: f64) -> Complex64 {
+        if self.driver_offset_m <= 1e-6 {
+            return u_total;
+        }
+        let (stub, main) = self.split_segments();
+        let z_rad = self.radiation_impedance(omega);
+        let z_main = Self::main_impedance(&main, omega, self.wall_loss, z_rad);
+        let Some(zs) = Self::stub_impedance(&stub, omega, self.wall_loss) else {
+            return u_total;
+        };
+        // параллельное деление: U_main = U_total · Zs/(Zs+Zmain)
+        u_total * zs / (zs + z_main)
+    }
+
+    fn mouth_velocity_flow(&self, u_in: Complex64, omega: f64) -> Complex64 {
+        let u_line = self.line_share(u_in, omega);
+        self.mouth_flow_of(u_line, omega)
     }
 }
 
@@ -320,6 +458,8 @@ mod tests {
             }],
             closed_end_area_cm2: 200.0,
             wall_loss: 0.35,
+            driver_offset_m: 0.0,
+            throat_chamber_l: 0.0,
         };
         let peaks = impedance_peaks(&line, 15.0, 400.0);
         assert!(!peaks.is_empty(), "пиков нет");
@@ -347,6 +487,8 @@ mod tests {
             }],
             closed_end_area_cm2: 200.0,
             wall_loss: 0.35,
+            driver_offset_m: 0.0,
+            throat_chamber_l: 0.0,
         };
         let stuffed = LineBox {
             segments: vec![Segment {
@@ -357,6 +499,8 @@ mod tests {
             }],
             closed_end_area_cm2: 200.0,
             wall_loss: 0.35,
+            driver_offset_m: 0.0,
+            throat_chamber_l: 0.0,
         };
         let p_empty = impedance_peaks(&empty, 15.0, 300.0);
         assert!(!p_empty.is_empty(), "у пустой линии должны быть моды");
@@ -406,6 +550,83 @@ mod tests {
             .collect();
         let max = band.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         assert!(max > 80.0 && max < 110.0, "SPL в полосе {max:.1} дБ");
+    }
+
+    fn straight(len: f64) -> LineBox {
+        LineBox {
+            segments: vec![Segment {
+                length_m: len,
+                area_start_cm2: 200.0,
+                area_end_cm2: 200.0,
+                stuffing_kgm3: 0.0,
+            }],
+            closed_end_area_cm2: 200.0,
+            wall_loss: 0.35,
+            driver_offset_m: 0.0,
+            throat_chamber_l: 0.0,
+        }
+    }
+
+    #[test]
+    fn offset_smooths_even_mode_ripple() {
+        // Смещённый драйвер сглаживает риппл чётной моды в АЧХ — классика ТЛ.
+        use crate::circuit::{solve_point, EnclosureModel};
+        let ripple = |line: &LineBox, flo: f64, fhi: f64| -> f64 {
+            let d = Driver::default();
+            let mut best = f64::NEG_INFINITY;
+            let mut worst = f64::INFINITY;
+            for k in 0..=400 {
+                let f = flo * (fhi / flo).powf(k as f64 / 400.0);
+                let w = crate::TAU * f;
+                let za = line.acoustic_load(&d, w);
+                let op = solve_point(&d, za, w, 2.83);
+                let p = op.u_diaphragm * za;
+                let u = line.radiated_velocity(&d, p, w, op.u_diaphragm);
+                let spl = 20.0 * ((w * crate::AIR_DENSITY * u.norm() / crate::TAU).max(1e-30)
+                    / crate::P_REF)
+                    .log10();
+                best = best.max(spl);
+                worst = worst.min(spl);
+            }
+            best - worst
+        };
+        let base = straight(1.715);
+        let mut off = straight(1.715);
+        off.driver_offset_m = 0.35;
+        // эффект — в области верхних мод (3-я/5-я гармоники λ/4)
+        let r_base = ripple(&base, 100.0, 300.0);
+        let r_off = ripple(&off, 100.0, 300.0);
+        assert!(
+            r_off < r_base * 0.8,
+            "смещение должно сглаживать верхние моды: риппл {r_off:.1} vs {r_base:.1} дБ"
+        );
+    }
+
+    #[test]
+    fn zero_offset_matches_plain_line() {
+        let mut a = straight(1.2);
+        a.driver_offset_m = 0.0;
+        let b = straight(1.2);
+        for k in 1..=50 {
+            let f = 30.0 * k as f64;
+            let d = (a.input_impedance(crate::TAU * f) - b.input_impedance(crate::TAU * f)).norm();
+            assert!(d < 1e-9);
+        }
+    }
+
+    #[test]
+    fn throat_chamber_blocks_lf() {
+        // Камера горла — последовательная ёмкость: растит |Z| на НЧ
+        let mut with_ch = straight(1.715);
+        with_ch.throat_chamber_l = 5.0;
+        let base = straight(1.715);
+        let w = crate::TAU * 25.0;
+        let z_ch = with_ch.input_impedance(w).norm();
+        let z_b = base.input_impedance(w).norm();
+        assert!(
+            z_ch > z_b * 2.0,
+            "камера горла должна блокировать НЧ: {z_ch:.3e} vs {z_b:.3e}"
+        );
     }
 
     #[test]

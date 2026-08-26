@@ -534,7 +534,14 @@ fn line(ui: &mut Ui, app: &mut App) -> bool {
     egui::CollapsingHeader::new(t!("enc.adv").to_string())
         .default_open(false)
         .show(ui, |ui| {
+            let mut ch2 = false;
             egui::Grid::new("line_adv").num_columns(2).show(ui, |ui| {
+                ch2 |= drag_digits(ui, &mut app.line.driver_offset_m, 0.01, 0.0..=3.0, " м", 2);
+                ui.label(t!("line.offset").to_string());
+                ui.end_row();
+                ch2 |= drag_digits(ui, &mut app.line.throat_chamber_l, 0.1, 0.0..=200.0, " л", 1);
+                ui.label(t!("line.throat").to_string());
+                ui.end_row();
                 ui.label(t!("line.wall_loss").to_string());
                 ui.add(
                     egui::DragValue::new(&mut app.line.wall_loss)
@@ -544,6 +551,9 @@ fn line(ui: &mut Ui, app: &mut App) -> bool {
                 );
                 ui.end_row();
             });
+            if ch2 {
+                app.mark_dirty();
+            }
         });
 
     common_actions(ui, app);
