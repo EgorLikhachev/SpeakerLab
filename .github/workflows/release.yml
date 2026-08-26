@@ -63,17 +63,23 @@ jobs:
       - name: Build release binary
         run: cargo build --release -p speakerlab
 
-      - name: Package
+      - name: Stage files
         shell: bash
         run: |
           mkdir -p dist
           cp target/release/${{ matrix.binary }} dist/
           cp README.md LICENSE dist/
-          cat > dist/RUN-LINUX.txt <<'EOT'
-          SpeakerLab on Linux needs GTK/X11 libraries at runtime:
-            sudo apt install libgtk-3-0 libxcb-render0 libxcb-shape0 libxkbcommon0
-          EOT
-          cd dist && zip -r ../${{ matrix.artifact }}.zip .
+          printf 'SpeakerLab on Linux needs GTK/X11 libraries at runtime:\n  sudo apt install libgtk-3-0 libxcb-render0 libxcb-shape0 libxkbcommon0\n' > dist/RUN-LINUX.txt
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/* -DestinationPath ${{ matrix.artifact }}.zip
+
+      - name: Package (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: cd dist && zip -r ../${{ matrix.artifact }}.zip .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
