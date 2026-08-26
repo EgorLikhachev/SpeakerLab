@@ -265,12 +265,7 @@ impl LineBox {
     }
 
     /// Импеданс основной линии от точки смещения до устья.
-    fn main_impedance(
-        segs: &[Segment],
-        omega: f64,
-        wall_loss: f64,
-        z_rad: Complex64,
-    ) -> Complex64 {
+    fn main_impedance(segs: &[Segment], omega: f64, wall_loss: f64, z_rad: Complex64) -> Complex64 {
         let m = Self::chain_of(segs, omega, wall_loss);
         let denom = m[1][0] * z_rad + m[1][1];
         if denom.norm_sqr() < 1e-30 {
@@ -582,9 +577,9 @@ mod tests {
                 let op = solve_point(&d, za, w, 2.83);
                 let p = op.u_diaphragm * za;
                 let u = line.radiated_velocity(&d, p, w, op.u_diaphragm);
-                let spl = 20.0 * ((w * crate::AIR_DENSITY * u.norm() / crate::TAU).max(1e-30)
-                    / crate::P_REF)
-                    .log10();
+                let spl = 20.0
+                    * ((w * crate::AIR_DENSITY * u.norm() / crate::TAU).max(1e-30) / crate::P_REF)
+                        .log10();
                 best = best.max(spl);
                 worst = worst.min(spl);
             }

@@ -14,6 +14,8 @@ use speakerlab_acoustics::response::{
 use speakerlab_acoustics::sealed::SealedBox;
 use speakerlab_acoustics::vented::VentedBox;
 
+use rust_i18n::t;
+
 use crate::library;
 use crate::ui::box_calc::BoxCalcState;
 use crate::ui::port_calc::PortCalc;
@@ -69,6 +71,12 @@ pub struct App {
     pub lib_filter: String,
     /// Ширина передней панели для baffle step, м (0 — не учитывать)
     pub baffle_m: f64,
+    /// Прямоугольник последнего графика (экранные коорд.) для PNG-экспорта
+    pub plot_rect: Option<egui::Rect>,
+    /// Путь для сохранения PNG (взят диалогом, ждём скриншот)
+    pub png_path: Option<std::path::PathBuf>,
+    /// Показать окно таблицы кривых
+    pub show_table: bool,
 }
 
 /// Сохраняемое между запусками состояние (кроме размеров окна — их
@@ -113,6 +121,9 @@ impl App {
             toasts: Vec::new(),
             lib_filter: String::new(),
             baffle_m: 0.0,
+            plot_rect: None,
+            png_path: None,
+            show_table: false,
         };
         if let Some(p) = persisted {
             if let Some(lang) = p.lang {
@@ -171,6 +182,51 @@ impl App {
             EnclosureKind::Bandpass4 => &self.bp4,
             EnclosureKind::Bandpass6 => &self.bp6,
             EnclosureKind::Line => &self.line,
+        }
+    }
+
+    /// Обработка ответа скриншота окна: кроп по графику и сохранение PNG.
+    pub fn handle_screenshot(&mut self, ctx: &egui::Context) {
+        let events: Vec<egui::Event> = ctx.input(|i| i.events.clone());
+        for ev in events {
+            if let egui::Event::Screenshot { image, .. } = ev {
+                let (Some(path), Some(rect)) = (self.png_path.take(), self.plot_rect) else {
+                    continue;
+                };
+                let scale = ctx.pixels_per_point();
+                let (w, h) = (image.width() as i32, image.height() as i32);
+                let clamp = |v: i32, hi: i32| v.clamp(0, hi);
+                let x0 = clamp((rect.left() * scale) as i32, w);
+                let y0 = clamp((rect.top() * scale) as i32, h);
+                let x1 = clamp((rect.right() * scale) as i32, w);
+                let y1 = clamp((rect.bottom() * scale) as i32, h);
+                if x1 <= x0 || y1 <= y0 {
+                    self.push_toast(t!("png.empty").to_string());
+                    continue;
+                }
+                let rgba: Vec<u8> = image.pixels.iter().flat_map(|c| c.to_array()).collect();
+                match image::RgbaImage::from_raw(w as u32, h as u32, rgba) {
+                    Some(full) => {
+                        let cropped = image::imageops::crop_imm(
+                            &full,
+                            x0 as u32,
+                            y0 as u32,
+                            (x1 - x0) as u32,
+                            (y1 - y0) as u32,
+                        )
+                        .to_image();
+                        match cropped.save_with_format(&path, image::ImageFormat::Png) {
+                            Ok(()) => {
+                                self.push_toast(format!("{}: {}", t!("png.saved"), path.display()))
+                            }
+                            Err(e) => {
+                                self.push_toast(format!("{}: {e}", t!("png.error")));
+                            }
+                        }
+                    }
+                    None => self.push_toast(t!("png.bad_buffer").to_string()),
+                }
+            }
         }
     }
 

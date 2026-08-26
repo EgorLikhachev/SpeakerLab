@@ -48,7 +48,56 @@ pub fn show(app: &mut App, ctx: &egui::Context, _frame: &mut eframe::Frame) {
     port_calc::window(ctx, app);
     box_calc::window(ctx, app);
     library_window::window(ctx, app);
+    table_window(ctx, app);
     draw_toasts(app, ctx);
+}
+
+/// Окно с табличным видом кривых (до ~150 строк).
+fn table_window(ctx: &egui::Context, app: &mut App) {
+    if !app.show_table {
+        return;
+    }
+    let mut open = app.show_table;
+    egui::Window::new(t!("table.title").to_string())
+        .open(&mut open)
+        .default_size([520.0, 500.0])
+        .show(ctx, |ui| {
+            let Some(c) = &app.curves else {
+                ui.weak(t!("sim.no_data").to_string());
+                return;
+            };
+            let step = (c.freq.len() / 150).max(1);
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                egui::Grid::new("curve_table")
+                    .striped(true)
+                    .num_columns(7)
+                    .show(ui, |ui| {
+                        ui.strong(t!("plot.freq"));
+                        ui.strong(t!("plot.spl"));
+                        ui.strong(t!("plot.impedance"));
+                        ui.strong(t!("plot.phase"));
+                        ui.strong(t!("plot.excursion"));
+                        ui.strong(t!("plot.groupdelay"));
+                        ui.strong(t!("plot.portvel"));
+                        ui.end_row();
+                        for i in (0..c.freq.len()).step_by(step) {
+                            ui.monospace(format!("{:8.1}", c.freq[i]));
+                            ui.monospace(format!("{:7.2}", c.spl[i]));
+                            ui.monospace(format!("{:7.2}", c.z_mag[i]));
+                            ui.monospace(format!("{:7.1}", c.z_phase[i]));
+                            ui.monospace(format!("{:7.3}", c.excursion_mm[i]));
+                            ui.monospace(format!("{:7.2}", c.group_delay_ms[i]));
+                            if let Some(v) = &c.port_vel_m_s {
+                                ui.monospace(format!("{:6.2}", v[i]));
+                            } else {
+                                ui.weak("—");
+                            }
+                            ui.end_row();
+                        }
+                    });
+            });
+        });
+    app.show_table = open;
 }
 
 /// Всплывающие уведомления об ошибках (нижний правый угол, 5 секунд).
@@ -114,6 +163,23 @@ fn top_bar(app: &mut App, ctx: &egui::Context) {
                             app.modified = false;
                         }
                     }
+                    ui.close();
+                }
+                if ui.button(t!("menu.export_png")).clicked() {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .add_filter("PNG", &["png"])
+                        .set_file_name("plot.png")
+                        .save_file()
+                    {
+                        app.png_path = Some(path);
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(
+                            egui::UserData::default(),
+                        ));
+                    }
+                    ui.close();
+                }
+                if ui.button(t!("menu.table")).clicked() {
+                    app.show_table = !app.show_table;
                     ui.close();
                 }
                 ui.separator();

@@ -31,6 +31,7 @@ fn main() -> eframe::Result<()> {
 
 impl eframe::App for state::App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.handle_screenshot(ctx);
         ui::show(self, ctx, frame);
     }
 

@@ -75,13 +75,16 @@ pub fn show(ui: &mut Ui, app: &mut App) {
     };
     let ref_curves = app.ref_curves.as_ref().map(|(_, c)| c);
 
-    match app.plot_tab {
+    let rect = match app.plot_tab {
         PlotTab::Spl => spl(ui, app, curves, ref_curves),
         PlotTab::Impedance => impedance(ui, curves, ref_curves),
         PlotTab::Phase => phase(ui, curves, ref_curves),
         PlotTab::Excursion => excursion(ui, app, curves, ref_curves),
         PlotTab::PortVel => port_vel(ui, curves),
         PlotTab::GroupDelay => group_delay(ui, curves, ref_curves),
+    };
+    if let Some(r) = rect {
+        app.plot_rect = Some(r);
     }
 }
 
@@ -175,7 +178,7 @@ fn tuning_markers(app: &App) -> Vec<VLine> {
     out
 }
 
-fn spl(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
+fn spl(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) -> Option<egui::Rect> {
     let line = Line::new(
         t!("plot.spl").to_string(),
         log_points(&curves.freq, &curves.spl),
@@ -184,7 +187,7 @@ fn spl(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
     .width(1.8_f32);
     let markers = tuning_markers(app);
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.spl));
-    base_plot("spl")
+    let resp = base_plot("spl")
         .y_axis_label(t!("plot.spl.y").to_string())
         .show(ui, |pu| {
             pu.line(line);
@@ -195,9 +198,10 @@ fn spl(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
                 pu.vline(m);
             }
         });
+    Some(resp.response.rect)
 }
 
-fn impedance(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
+fn impedance(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) -> Option<egui::Rect> {
     let line = Line::new(
         t!("plot.impedance").to_string(),
         log_points(&curves.freq, &curves.z_mag),
@@ -205,7 +209,7 @@ fn impedance(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
     .color(colors::Z)
     .width(1.8_f32);
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.z_mag));
-    base_plot("impedance")
+    let resp = base_plot("impedance")
         .y_axis_label(t!("plot.z.y").to_string())
         .show(ui, |pu| {
             pu.line(line);
@@ -213,9 +217,10 @@ fn impedance(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
                 pu.line(r);
             }
         });
+    Some(resp.response.rect)
 }
 
-fn phase(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
+fn phase(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) -> Option<egui::Rect> {
     let line = Line::new(
         t!("plot.phase").to_string(),
         log_points(&curves.freq, &curves.z_phase),
@@ -223,7 +228,7 @@ fn phase(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
     .color(colors::PHASE)
     .width(1.8_f32);
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.z_phase));
-    base_plot("phase")
+    let resp = base_plot("phase")
         .y_axis_label(t!("plot.phase.y").to_string())
         .show(ui, |pu| {
             pu.line(line);
@@ -231,9 +236,15 @@ fn phase(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
                 pu.line(r);
             }
         });
+    Some(resp.response.rect)
 }
 
-fn excursion(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
+fn excursion(
+    ui: &mut Ui,
+    app: &App,
+    curves: &Curves,
+    ref_c: Option<&Curves>,
+) -> Option<egui::Rect> {
     let line = Line::new(
         t!("plot.excursion").to_string(),
         log_points(&curves.freq, &curves.excursion_mm),
@@ -266,7 +277,7 @@ fn excursion(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
         .style(LineStyle::dashed_dense());
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.excursion_mm));
     let markers = tuning_markers(app);
-    base_plot("excursion")
+    let resp = base_plot("excursion")
         .y_axis_label(t!("plot.exc.y").to_string())
         .show(ui, |pu| {
             pu.line(line);
@@ -284,12 +295,13 @@ fn excursion(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
                 pu.vline(m);
             }
         });
+    Some(resp.response.rect)
 }
 
-fn port_vel(ui: &mut Ui, curves: &Curves) {
+fn port_vel(ui: &mut Ui, curves: &Curves) -> Option<egui::Rect> {
     let Some(vel) = &curves.port_vel_m_s else {
         ui.label(t!("enc.vented.port_none").to_string());
-        return;
+        return None;
     };
     let line = Line::new(
         t!("plot.portvel").to_string(),
@@ -305,16 +317,17 @@ fn port_vel(ui: &mut Ui, curves: &Curves) {
         .color(colors::DANGER)
         .width(1.0_f32)
         .style(LineStyle::dashed_dense());
-    base_plot("port_vel")
+    let resp = base_plot("port_vel")
         .y_axis_label(t!("plot.vel.y").to_string())
         .show(ui, |pu| {
             pu.line(line);
             pu.hline(caution);
             pu.hline(limit);
         });
+    Some(resp.response.rect)
 }
 
-fn group_delay(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
+fn group_delay(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) -> Option<egui::Rect> {
     let line = Line::new(
         t!("plot.groupdelay").to_string(),
         log_points(&curves.freq, &curves.group_delay_ms),
@@ -322,7 +335,7 @@ fn group_delay(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
     .color(colors::GROUP_DELAY)
     .width(1.8_f32);
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.group_delay_ms));
-    base_plot("group_delay")
+    let resp = base_plot("group_delay")
         .y_axis_label(t!("plot.gd.y").to_string())
         .show(ui, |pu| {
             pu.line(line);
@@ -330,4 +343,5 @@ fn group_delay(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
                 pu.line(r);
             }
         });
+    Some(resp.response.rect)
 }

@@ -3161,6 +3161,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui_plot",
+ "image",
  "num-complex",
  "rfd",
  "rust-i18n",
