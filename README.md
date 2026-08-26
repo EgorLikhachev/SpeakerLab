@@ -84,7 +84,7 @@ Linux additionally needs GUI development packages (Ubuntu/Debian):
 
 ```bash
 sudo apt install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxkbcommon-dev
-```text
+```
 
 ## Installation
 
@@ -99,7 +99,7 @@ cargo run -p speakerlab
 # Or make an optimized release build
 cargo build --release -p speakerlab
 # The binary is at target/release/speakerlab (.exe on Windows)
-```text
+```
 
 ## Usage
 
@@ -121,7 +121,7 @@ Example: verify the physics engine end to end (see the next section):
 ```bash
 cargo run -p speakerlab-acoustics --example dump_curves > verify/curves.json
 python verify/verify.py
-```text
+```
 
 ## Data and Configuration
 
@@ -146,7 +146,7 @@ cargo clippy --all-targets -- -D warnings   # lint check
 # Independent cross-verification (Python + numpy):
 cargo run -p speakerlab-acoustics --example dump_curves > verify/curves.json
 python verify/verify.py          # 14 independent checks
-```text
+```
 
 The Python verifier re-implements the electro-mechano-acoustic circuit from
 scratch and additionally checks against closed-form textbook formulas:
@@ -191,7 +191,7 @@ SpeakerLab/
 ├── verify/               # Independent Python verification
 │   └── verify.py
 └── .github/              # CI workflows and issue/PR templates
-```text
+```
 
 ## Contributing
 

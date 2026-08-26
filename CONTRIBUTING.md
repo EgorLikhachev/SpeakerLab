@@ -41,7 +41,7 @@ fix/<short-description>       bug fix
 docs/<short-description>      documentation only
 refactor/<short-description>  code structure change
 test/<short-description>      tests only
-```text
+```
 
 Examples: `feat/horn-wizard`, `fix/port-end-correction`, `docs/readme-badges`.
 
@@ -54,7 +54,7 @@ Format:
 <type>(<scope>): <short summary in imperative mood>
 
 [optional body]
-```text
+```
 
 Common types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `perf`.
 Scope is usually the crate or module: `acoustics`, `app`, `ui`, `verify`.
@@ -66,7 +66,7 @@ feat(acoustics): add passive radiator mass suggestion
 fix(app): recompute curves when switching enclosure type
 docs(readme): add verification table
 test(vented): assert impedance minimum at Fb
-```text
+```
 
 ## Before You Submit
 
@@ -76,7 +76,7 @@ Run all of these locally; CI runs the same checks:
 cargo fmt --all
 cargo clippy --all-targets -- -D warnings
 cargo test
-```text
+```
 
 For changes to the physics core, also run the independent verification and
 make sure it still reports 14/14:
@@ -84,7 +84,7 @@ make sure it still reports 14/14:
 ```bash
 cargo run -p speakerlab-acoustics --example dump_curves > verify/curves.json
 python verify/verify.py
-```text
+```
 
 If your change intentionally alters reference values (e.g. a recalibrated
 model), update `verify/verify.py` expectations **and** explain the reason
