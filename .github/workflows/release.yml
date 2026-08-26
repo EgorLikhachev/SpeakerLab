@@ -30,10 +30,6 @@ jobs:
             os: macos-latest
             artifact: speakerlab-macos-aarch64
             binary: speakerlab
-          - name: macos-x86_64
-            os: macos-13
-            artifact: speakerlab-macos-x86_64
-            binary: speakerlab
 
     steps:
       - uses: actions/checkout@v4
