@@ -129,9 +129,7 @@ scratch and additionally checks against closed-form textbook formulas:
 reference efficiency η₀ = 9.64·10⁻¹⁰·Fs³·Vas/Qes, sealed-box transfer
 function, fc/Qtc/F3, the classic port length formula, and qualitative
 signatures (impedance minimum and excursion dip at Fb, 24 dB/octave
-rolloff, quarter-wave resonance). See the "Verification" details in
-[crates/acoustics](crates/acoustics/src) module docs and the table in this
-section of the wiki-style summary below.
+rolloff, quarter-wave resonance). Summary of what is verified:
 
 | What is checked | Method | Result |
 |---|---|---|

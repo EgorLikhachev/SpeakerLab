@@ -5,6 +5,13 @@ members = ["crates/acoustics", "crates/app"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/EgorLikhachev/SpeakerLab"
+homepage = "https://github.com/EgorLikhachev/SpeakerLab"
+readme = "README.md"
+keywords = ["audio", "speaker", "enclosure", "acoustics", "dsp"]
+categories = ["science", "multimedia::audio"]
 
 [profile.release]
 lto = true

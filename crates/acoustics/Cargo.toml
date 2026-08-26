@@ -3,6 +3,10 @@ name = "speakerlab-acoustics"
 description = "Ядро акустических расчётов SpeakerLab (без UI)"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [dependencies]
 num-complex = "0.4"
