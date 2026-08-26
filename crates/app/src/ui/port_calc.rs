@@ -9,7 +9,7 @@ use speakerlab_acoustics::port::{
 use speakerlab_acoustics::vented::VentedBox;
 
 use crate::state::{App, EnclosureKind};
-use crate::ui::util::{colors, fnum};
+use crate::ui::util::{colors, fnum, unit, uv};
 
 pub struct PortCalc {
     pub open: bool,
@@ -135,10 +135,10 @@ fn body(ui: &mut Ui, app: &mut App) {
 
     ui.label(
         egui::RichText::new(format!(
-            "⌀ {} мм → L = {} мм   (Fb ≈ {} Гц)",
-            spec.hydraulic_diameter_m() * 1e3,
-            fnum(len_mm),
-            fnum(fb_result)
+            "⌀ {} → L = {}   (Fb ≈ {})",
+            uv(format!("{:.0}", spec.hydraulic_diameter_m() * 1e3), "мм"),
+            uv(fnum(len_mm), "мм"),
+            uv(fnum(fb_result), "Гц")
         ))
         .strong()
         .size(16.0)
@@ -149,12 +149,12 @@ fn body(ui: &mut Ui, app: &mut App) {
     let (lo, hi) = recommended_area_range(app.driver.sd_m2());
     let area_ok = area_cm2 >= lo * 1.0e4 * 0.999;
     let area_hint = format!(
-        "{}: {} см² · {} {}–{} см²",
+        "{}: {} · {} {}–{}",
         t!("portcalc.area"),
-        fnum(area_cm2),
+        uv(fnum(area_cm2), "см²"),
         t!("portcalc.area_rec"),
-        fnum(lo * 1.0e4),
-        fnum(hi * 1.0e4)
+        uv(fnum(lo * 1.0e4), "см²"),
+        uv(fnum(hi * 1.0e4), "см²")
     );
     ui.colored_label(
         if area_ok {
@@ -226,7 +226,7 @@ fn inputs(ui: &mut Ui, pc: &mut PortCalc) {
                 egui::DragValue::new(&mut pc.vb)
                     .speed(0.2)
                     .range(1.0..=2000.0)
-                    .suffix(" л"),
+                    .suffix(format!(" {}", unit("л"))),
             );
             if !pc.from_length {
                 ui.label(t!("portcalc.fb").to_string());
@@ -234,7 +234,7 @@ fn inputs(ui: &mut Ui, pc: &mut PortCalc) {
                     egui::DragValue::new(&mut pc.fb)
                         .speed(0.2)
                         .range(10.0..=200.0)
-                        .suffix(" Гц"),
+                        .suffix(format!(" {}", unit("Гц"))),
                 );
             }
             ui.end_row();
@@ -252,7 +252,7 @@ fn inputs(ui: &mut Ui, pc: &mut PortCalc) {
                     egui::DragValue::new(&mut pc.d_mm)
                         .speed(1.0)
                         .range(10.0..=500.0)
-                        .suffix(" мм"),
+                        .suffix(format!(" {}", unit("мм"))),
                 );
             } else {
                 ui.label(t!("portcalc.width").to_string());

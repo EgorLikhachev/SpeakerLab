@@ -7,7 +7,7 @@ use speakerlab_acoustics::port::port_length_m;
 use speakerlab_acoustics::port::EndCorrection;
 
 use crate::state::{App, EnclosureKind};
-use crate::ui::util::{colors, fnum, num_field};
+use crate::ui::util::{colors, fnum, num_field, unit, uv};
 
 pub struct BoxCalcState {
     pub open: bool,
@@ -177,7 +177,7 @@ fn body(ui: &mut Ui, app: &mut App) {
                     egui::DragValue::new(&mut w)
                         .speed(2.0)
                         .range(50.0..=2000.0)
-                        .suffix(" мм"),
+                        .suffix(format!(" {}", unit("мм"))),
                 )
                 .changed();
             ui.label(t!("boxcalc.height").to_string());
@@ -218,24 +218,28 @@ fn body(ui: &mut Ui, app: &mut App) {
     ui.add_space(6.0);
     ui.label(
         egui::RichText::new(format!(
-            "{} × {} × {} мм   (внутри)   →   {} × {} × {} мм   (снаружи)",
+            "{} × {} × {} {} ({}) → {} × {} × {} {} ({})",
             fnum(dims.w),
             fnum(dims.h),
             fnum(dims.d),
+            unit("мм"),
+            t!("boxcalc.inside"),
             fnum(ext.w),
             fnum(ext.h),
-            fnum(ext.d)
+            fnum(ext.d),
+            unit("мм"),
+            t!("boxcalc.outside")
         ))
         .strong()
         .size(15.0)
         .color(colors::HINT),
     );
     ui.label(format!(
-        "{}: {} л · {}: {} л · {}: {}",
+        "{}: {} · {}: {} · {}: {}",
         t!("boxcalc.gross"),
-        fnum(calc.gross_volume()),
+        uv(fnum(calc.gross_volume()), "л"),
         t!("boxcalc.net"),
-        fnum(calc.net_for_dims(dims)),
+        uv(fnum(calc.net_for_dims(dims)), "л"),
         t!("boxcalc.panel_area"),
         fnum(panel_area(ext, bc.wall_mm))
     ));

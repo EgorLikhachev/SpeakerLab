@@ -5,7 +5,7 @@ use rust_i18n::t;
 use speakerlab_acoustics::driver::{DriverField, DriverIssue};
 
 use crate::state::App;
-use crate::ui::util::{colors, fnum, num_field, section};
+use crate::ui::util::{colors, fnum, num_field, section, uv};
 
 pub fn show(ui: &mut Ui, app: &mut App) {
     ui.heading(t!("driver.title").to_string());
@@ -126,10 +126,10 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                     ui.weak(t!("driver.qts").to_string());
                     ui.label(fnum(d.qts()));
                     ui.weak(t!("driver.bl").to_string());
-                    ui.label(format!("{} Т·м", fnum(d.bl_tm())));
+                    ui.label(uv(fnum(d.bl_tm()), "Т·м"));
                     ui.end_row();
                     ui.weak(t!("driver.mms").to_string());
-                    ui.label(format!("{} г", fnum(d.mms_kg() * 1e3)));
+                    ui.label(uv(fnum(d.mms_kg() * 1e3), "г"));
                     ui.weak(t!("driver.ebp").to_string());
                     ui.label(fnum(d.ebp()));
                     ui.end_row();
@@ -160,7 +160,7 @@ pub fn show(ui: &mut Ui, app: &mut App) {
             ui.horizontal(|ui| {
                 if ui.button(t!("driver.save_library").to_string()).clicked() {
                     if let Err(e) = crate::library::save_driver(&app.driver) {
-                        eprintln!("Не удалось сохранить в библиотеку: {e}");
+                        app.push_toast(t!("err.save_library", msg = e.to_string()).to_string());
                     }
                     app.library = crate::library::load_library();
                 }

@@ -50,7 +50,9 @@ pub fn save_settings(lang: &str) {
 }
 
 /// Имя файла для динамика: «Производитель Модель.json» (санитизированное).
-fn driver_file_name(d: &Driver) -> String {
+/// Разрешены только буквы/цифры, '-', '.', '+' и пробел (→ '_'):
+/// кавычки и прочие символы нелегальны в путях Windows.
+pub(crate) fn driver_file_name(d: &Driver) -> String {
     let raw = if d.manufacturer.is_empty() {
         d.name.clone()
     } else {
@@ -59,7 +61,7 @@ fn driver_file_name(d: &Driver) -> String {
     let cleaned: String = raw
         .chars()
         .map(|c| {
-            if c.is_alphanumeric() || c == ' ' || c == '-' || c == '.' || c == '"' || c == '\'' {
+            if c.is_alphanumeric() || c == '-' || c == '.' || c == '+' || c == ' ' {
                 c
             } else {
                 '_'
@@ -67,6 +69,7 @@ fn driver_file_name(d: &Driver) -> String {
         })
         .collect();
     let trimmed = cleaned.trim().replace(' ', "_");
+    let trimmed = trimmed.trim_matches('_').to_string();
     if trimmed.is_empty() {
         "driver".to_string()
     } else {
@@ -122,4 +125,47 @@ pub fn export_driver(d: &Driver, path: &std::path::Path) -> io::Result<()> {
     let json = serde_json::to_string_pretty(d)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     std::fs::write(path, json)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn driver_named(name: &str, manufacturer: &str) -> Driver {
+        Driver {
+            name: name.into(),
+            manufacturer: manufacturer.into(),
+            ..Driver::default()
+        }
+    }
+
+    #[test]
+    fn file_name_is_windows_safe() {
+        // Кавычки, двоеточия, слэши нелегальны в путях Windows
+        let cases = [
+            ("8\" woofer", "8__woofer"),
+            ("Foo/Bar: Baz?", "Foo_Bar__Baz"),
+            ("WS-385", "WS-385"),
+            ("A.B+C", "A.B+C"),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(
+                driver_file_name(&driver_named(input, "")),
+                expected,
+                "{input:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn file_name_manufacturer_prefix() {
+        let d = driver_named("W170S", "Visaton");
+        assert_eq!(driver_file_name(&d), "Visaton_W170S");
+    }
+
+    #[test]
+    fn file_name_fallback() {
+        let d = driver_named("\"\"", "");
+        assert_eq!(driver_file_name(&d), "driver");
+    }
 }

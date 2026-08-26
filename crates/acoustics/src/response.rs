@@ -289,7 +289,7 @@ pub fn compute_limits(
     z_min_ohm: f64,
 ) -> Limits {
     let mut lim = Limits::default();
-    if !(voltage > 0.0) {
+    if voltage <= 0.0 || voltage.is_nan() {
         return lim;
     }
 

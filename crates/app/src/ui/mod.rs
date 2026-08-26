@@ -48,6 +48,30 @@ pub fn show(app: &mut App, ctx: &egui::Context, _frame: &mut eframe::Frame) {
     port_calc::window(ctx, app);
     box_calc::window(ctx, app);
     library_window::window(ctx, app);
+    draw_toasts(app, ctx);
+}
+
+/// Всплывающие уведомления об ошибках (нижний правый угол, 5 секунд).
+fn draw_toasts(app: &mut App, ctx: &egui::Context) {
+    app.toasts.retain(|(_, t)| t.elapsed().as_secs_f32() < 5.0);
+    if app.toasts.is_empty() {
+        return;
+    }
+    egui::Area::new(egui::Id::new("toasts"))
+        .anchor(egui::Align2::RIGHT_BOTTOM, (-12.0, -12.0))
+        .order(egui::Order::Foreground)
+        .show(ctx, |ui| {
+            egui::Frame::new()
+                .fill(egui::Color32::from_rgb(60, 26, 26))
+                .stroke(egui::Stroke::new(1.0, crate::ui::util::colors::DANGER))
+                .corner_radius(6.0)
+                .inner_margin(egui::Margin::same(10))
+                .show(ui, |ui| {
+                    for (msg, _) in app.toasts.clone() {
+                        ui.colored_label(crate::ui::util::colors::DANGER, msg);
+                    }
+                });
+        });
 }
 
 fn top_bar(app: &mut App, ctx: &egui::Context) {
@@ -68,7 +92,9 @@ fn top_bar(app: &mut App, ctx: &egui::Context) {
                                 p.apply_to(app);
                                 app.project_path = Some(path);
                             }
-                            Err(e) => eprintln!("open project: {e}"),
+                            Err(e) => app.push_toast(
+                                t!("err.open_project", msg = e.to_string()).to_string(),
+                            ),
                         }
                     }
                     ui.close();
@@ -131,7 +157,7 @@ fn top_bar(app: &mut App, ctx: &egui::Context) {
                     egui::DragValue::new(&mut v)
                         .speed(0.1)
                         .range(0.1..=200.0)
-                        .suffix(" В"),
+                        .suffix(format!(" {}", crate::ui::util::unit("В"))),
                 );
                 if resp.changed() {
                     app.sim.voltage = v;

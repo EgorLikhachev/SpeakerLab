@@ -7,7 +7,7 @@ use speakerlab_acoustics::line::Segment;
 use speakerlab_acoustics::suggest;
 
 use crate::state::{App, EnclosureKind};
-use crate::ui::util::{colors, fnum, num_field};
+use crate::ui::util::{colors, fnum, num_field, uv};
 
 pub fn show(ui: &mut Ui, app: &mut App) {
     type_buttons(ui, app);
@@ -111,8 +111,8 @@ fn sealed(ui: &mut Ui, app: &mut App) -> bool {
             .unwrap_or_default();
         ui.label(
             egui::RichText::new(format!(
-                "fc = {} Гц   Qtc = {}   {f3}",
-                fnum(app.sealed.fc(d)),
+                "fc = {}   Qtc = {}   {f3}",
+                uv(fnum(app.sealed.fc(d)), "Гц"),
                 fnum(app.sealed.qtc(d))
             ))
             .color(colors::HINT),
@@ -125,7 +125,7 @@ fn sealed(ui: &mut Ui, app: &mut App) -> bool {
         ui.horizontal(|ui| {
             ui.weak(t!("suggest.title").to_string());
             for s in &suggestions {
-                let label = format!("{}: {} л", t!(s.label_key), fnum(s.vb));
+                let label = format!("{}: {}", t!(s.label_key), uv(fnum(s.vb), "л"));
                 if ui
                     .button(egui::RichText::new(label).color(colors::HINT))
                     .on_hover_text(t!("suggest.apply").to_string())
@@ -187,13 +187,13 @@ fn vented(ui: &mut Ui, app: &mut App) -> bool {
         if let Some(s) = &app.summary {
             let f3 = s
                 .f3_low
-                .map(|f| format!("F3 = {} Гц", fnum(f)))
+                .map(|f| format!("F3 = {}", uv(fnum(f), "Гц")))
                 .unwrap_or_default();
             ui.label(
                 egui::RichText::new(format!(
-                    "α = {}   {f3}   |Z|min = {} Ом",
+                    "α = {}   {f3}   |Z|min = {}",
                     fnum(app.driver.vas / app.vented.vb),
-                    fnum(s.z_min)
+                    uv(fnum(s.z_min), "Ом")
                 ))
                 .color(colors::HINT),
             );
@@ -210,10 +210,10 @@ fn vented(ui: &mut Ui, app: &mut App) -> bool {
             ui.weak(t!("suggest.title").to_string());
             for s in &suggestions {
                 let label = format!(
-                    "{}: {} л / {} Гц",
+                    "{}: {} / {}",
                     t!(s.label_key),
-                    fnum(s.vb),
-                    fnum(s.fb.unwrap_or(0.0))
+                    uv(fnum(s.vb), "л"),
+                    uv(fnum(s.fb.unwrap_or(0.0)), "Гц")
                 );
                 if ui
                     .button(egui::RichText::new(label).color(colors::HINT))
@@ -293,8 +293,9 @@ fn passive(ui: &mut Ui, app: &mut App) -> bool {
     ui.horizontal(|ui| {
         ui.label(
             egui::RichText::new(format!(
-                "F(ПИ) = {} Гц   α = {}",
-                fnum(tuning),
+                "F({}) = {}   α = {}",
+                t!("enc.pr.abbr"),
+                uv(fnum(tuning), "Гц"),
                 fnum(app.driver.vas / app.passive.vb)
             ))
             .color(colors::HINT),
@@ -304,10 +305,10 @@ fn passive(ui: &mut Ui, app: &mut App) -> bool {
             if let Some(fb) = s.fb {
                 if let Some(mass) = app.passive.mass_for_tuning(fb) {
                     let label = format!(
-                        "{}: {} г → F = {} Гц",
+                        "{}: {} → F = {}",
                         t!("suggest.pr_mass"),
-                        fnum(mass),
-                        fnum(fb)
+                        uv(fnum(mass), "г"),
+                        uv(fnum(fb), "Гц")
                     );
                     if ui
                         .button(egui::RichText::new(label).color(colors::HINT))
@@ -422,8 +423,13 @@ fn bandpass6(ui: &mut Ui, app: &mut App) -> bool {
 
 fn band_text(lo: Option<f64>, hi: Option<f64>) -> String {
     match (lo, hi) {
-        (Some(lo), Some(hi)) => format!("{}: {}–{} Гц", t!("sum.band"), fnum(lo), fnum(hi)),
-        (Some(lo), None) => format!("{}: {} Гц", t!("sum.f3"), fnum(lo)),
+        (Some(lo), Some(hi)) => format!(
+            "{}: {}–{}",
+            t!("sum.band"),
+            uv(fnum(lo), "Гц"),
+            uv(fnum(hi), "Гц")
+        ),
+        (Some(lo), None) => format!("{}: {}", t!("sum.f3"), uv(fnum(lo), "Гц")),
         _ => String::new(),
     }
 }
@@ -496,10 +502,10 @@ fn line(ui: &mut Ui, app: &mut App) -> bool {
         }
         ui.label(
             egui::RichText::new(format!(
-                "L = {} м · f(λ/4) ≈ {} Гц · V = {} л",
-                fnum(app.line.total_length()),
-                fnum(app.line.quarter_wave_hz()),
-                fnum(app.line.volume_l())
+                "L = {} · f(λ/4) ≈ {} · V = {}",
+                uv(fnum(app.line.total_length()), "м"),
+                uv(fnum(app.line.quarter_wave_hz()), "Гц"),
+                uv(fnum(app.line.volume_l()), "л")
             ))
             .color(colors::HINT),
         );
@@ -629,11 +635,16 @@ fn drag_digits(
     unit: &str,
     digits: usize,
 ) -> bool {
+    let suffix = if unit.is_empty() {
+        String::new()
+    } else {
+        format!(" {}", crate::ui::util::unit(unit))
+    };
     ui.add(
         egui::DragValue::new(v)
             .speed(speed)
             .range(range)
-            .suffix(unit)
+            .suffix(&suffix)
             .custom_formatter(move |n, _| format!("{n:.digits$}")),
     )
     .changed()

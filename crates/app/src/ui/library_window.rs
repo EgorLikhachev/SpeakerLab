@@ -5,7 +5,7 @@ use rust_i18n::t;
 
 use crate::library;
 use crate::state::App;
-use crate::ui::util::{colors, fnum};
+use crate::ui::util::{colors, fnum, uv};
 
 pub fn window(ctx: &Context, app: &mut App) {
     if !app.show_library {
@@ -59,11 +59,11 @@ fn body(ui: &mut Ui, app: &mut App) {
                 format!("{} {}", d.manufacturer, d.name)
             };
             let sub = format!(
-                "Fs={} Гц · Qts={} · Vas={} л · Sd={} см²",
-                fnum(d.fs),
+                "Fs={} · Qts={} · Vas={} · Sd={}",
+                uv(fnum(d.fs), "Гц"),
                 fnum(d.qts()),
-                fnum(d.vas),
-                fnum(d.sd)
+                uv(fnum(d.vas), "л"),
+                uv(fnum(d.sd), "см²")
             );
             let resp = ui.selectable_label(is_sel, egui::RichText::new(title).strong());
             if resp.clicked() {

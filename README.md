@@ -17,6 +17,7 @@ runtime). Runs on Windows, Linux, and macOS as a single native binary.
 
 ## Table of Contents
 
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
@@ -50,6 +51,29 @@ runtime). Runs on Windows, Linux, and macOS as a single native binary.
 - **Projects** (`.spkproj`) and a personal **driver library** in open JSON.
 - **CSV export** of all calculated curves.
 - **RU / EN interface** with live switching.
+
+## Screenshots
+
+Main window — live bass-reflex design with alignment suggestions and the
+summary bar (F3, excursion, V-limit before Xmax, port velocity):
+
+![Main window](docs/screenshots/main.png)
+
+Port calculator (length ⇄ tuning, velocity check) and box dimension
+calculator:
+
+| Port calculator | Box dimensions |
+|:---:|:---:|
+| ![Port calculator](docs/screenshots/port-calc.png) | ![Box dimensions](docs/screenshots/box-dim.png) |
+
+Transmission line / quarter-wave / horn editor with per-segment geometry
+and stuffing:
+
+![TL editor](docs/screenshots/tl-segments.png)
+
+Personal driver library (open JSON, easy to share):
+
+![Driver library](docs/screenshots/library.png)
 
 ## Prerequisites
 

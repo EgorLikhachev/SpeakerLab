@@ -5,7 +5,7 @@ use rust_i18n::t;
 use speakerlab_acoustics::port::velocity_level;
 
 use crate::state::{App, EnclosureKind};
-use crate::ui::util::{colors, fnum};
+use crate::ui::util::{colors, fnum, uv};
 
 pub fn show(ui: &mut Ui, app: &App) {
     ui.horizontal_wrapped(|ui| {
@@ -14,76 +14,76 @@ pub fn show(ui: &mut Ui, app: &App) {
             return;
         };
 
-        chip(ui, &t!("sum.peak"), format!("{} дБ", fnum(s.peak_spl)));
+        chip(ui, &t!("sum.peak"), uv(fnum(s.peak_spl), "дБ"));
         if let Some(f3) = s.f3_low {
-            chip(ui, &t!("sum.f3"), format!("{} Гц", fnum(f3)));
+            chip(ui, &t!("sum.f3"), uv(fnum(f3), "Гц"));
         }
         if let Some(f3h) = s.f3_high {
-            chip(ui, &t!("sum.f3h"), format!("{} Гц", fnum(f3h)));
+            chip(ui, &t!("sum.f3h"), uv(fnum(f3h), "Гц"));
         }
         match app.kind {
             EnclosureKind::Sealed => {
                 chip(
                     ui,
                     &t!("sum.fc"),
-                    format!("{} Гц", fnum(app.sealed.fc(&app.driver))),
+                    uv(fnum(app.sealed.fc(&app.driver)), "Гц"),
                 );
                 chip(ui, &t!("sum.qtc"), fnum(app.sealed.qtc(&app.driver)));
             }
             EnclosureKind::Vented => {
-                chip(ui, &t!("sum.fb"), format!("{} Гц", fnum(app.vented.fb)));
+                chip(ui, &t!("sum.fb"), uv(fnum(app.vented.fb), "Гц"));
                 chip(ui, &t!("sum.alpha"), fnum(app.driver.vas / app.vented.vb));
             }
             EnclosureKind::Passive => {
-                chip(
-                    ui,
-                    &t!("sum.fb"),
-                    format!("{} Гц", fnum(app.passive.tuning_hz())),
-                );
+                chip(ui, &t!("sum.fb"), uv(fnum(app.passive.tuning_hz()), "Гц"));
                 chip(ui, &t!("sum.alpha"), fnum(app.driver.vas / app.passive.vb));
             }
             EnclosureKind::Bandpass4 => {
-                chip(ui, &t!("sum.fb"), format!("{} Гц", fnum(app.bp4.fb)));
+                chip(ui, &t!("sum.fb"), uv(fnum(app.bp4.fb), "Гц"));
             }
             EnclosureKind::Bandpass6 => {
-                chip(ui, &t!("sum.fb"), format!("{} Гц", fnum(app.bp6.fb_rear)));
-                chip(ui, &t!("sum.fb2"), format!("{} Гц", fnum(app.bp6.fb_front)));
+                chip(ui, &t!("sum.fb"), uv(fnum(app.bp6.fb_rear), "Гц"));
+                chip(ui, &t!("sum.fb2"), uv(fnum(app.bp6.fb_front), "Гц"));
             }
             EnclosureKind::Line => {
                 chip(
                     ui,
                     &t!("sum.qw"),
-                    format!("{} Гц", fnum(app.line.quarter_wave_hz())),
+                    uv(fnum(app.line.quarter_wave_hz()), "Гц"),
                 );
-                chip(
-                    ui,
-                    &t!("sum.volume"),
-                    format!("{} л", fnum(app.line.volume_l())),
-                );
+                chip(ui, &t!("sum.volume"), uv(fnum(app.line.volume_l()), "л"));
             }
         }
         chip(
             ui,
             &t!("sum.zmax"),
-            format!("{} Ом @ {} Гц", fnum(s.z_max), fnum(s.z_max_freq)),
+            format!(
+                "{} @ {}",
+                uv(fnum(s.z_max), "Ом"),
+                uv(fnum(s.z_max_freq), "Гц")
+            ),
         );
         chip(
             ui,
             &t!("sum.exc_max"),
             format!(
-                "{} мм @ {} Гц",
-                fnum(s.excursion_max_mm),
-                fnum(s.excursion_max_freq)
+                "{} @ {}",
+                uv(fnum(s.excursion_max_mm), "мм"),
+                uv(fnum(s.excursion_max_freq), "Гц")
             ),
         );
         if let Some(efb) = s.excursion_at_tuning {
-            chip(ui, &t!("sum.exc_at_fb"), format!("{} мм", fnum(efb)));
+            chip(ui, &t!("sum.exc_at_fb"), uv(fnum(efb), "мм"));
         }
         if let Some(v) = s.port_vel_max_m_s {
             chip(
                 ui,
                 &t!("sum.vel_max"),
-                format!("{} м/с @ {} Гц", fnum(v), fnum(s.port_vel_max_freq)),
+                format!(
+                    "{} @ {}",
+                    uv(fnum(v), "м/с"),
+                    uv(fnum(s.port_vel_max_freq), "Гц")
+                ),
             );
         }
         // Предельное напряжение и мощность на нём
@@ -94,7 +94,7 @@ pub fn show(ui: &mut Ui, app: &App) {
                 let detail = match lim.limiting {
                     speakerlab_acoustics::response::LimitKind::Xmax => lim
                         .v_xmax
-                        .map(|(_, f)| format!(" @ {} {}", fnum(f), t!("unit.hz")))
+                        .map(|(_, f)| format!(" @ {}", uv(fnum(f), "Гц")))
                         .unwrap_or_default(),
                     speakerlab_acoustics::response::LimitKind::Port => lim
                         .v_port
@@ -106,11 +106,9 @@ pub fn show(ui: &mut Ui, app: &App) {
                     ui,
                     &t!("sum.vlimit"),
                     format!(
-                        "{} {} ({:.0} {}) — {}{detail}",
-                        fnum(v_limit),
-                        t!("unit.v"),
-                        p_limit,
-                        t!("unit.w"),
+                        "{} ({}) — {}{detail}",
+                        uv(fnum(v_limit), "В"),
+                        uv(format!("{p_limit:.0}"), "Вт"),
                         t!(kind)
                     ),
                 );
@@ -118,11 +116,7 @@ pub fn show(ui: &mut Ui, app: &App) {
         }
         // Приблизительная мощность на текущем напряжении
         let p = app.sim.voltage * app.sim.voltage / s.z_min.max(0.1);
-        chip(
-            ui,
-            &t!("sum.power"),
-            format!("≈{} {}", fnum(p), t!("unit.w")),
-        );
+        chip(ui, &t!("sum.power"), format!("≈{}", uv(fnum(p), "Вт")));
     });
 
     // Предупреждения

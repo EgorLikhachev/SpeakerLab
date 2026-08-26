@@ -63,6 +63,8 @@ pub struct App {
     pub plot_tab: crate::ui::plots::PlotTab,
     /// Эталонные кривые для сравнения (пунктиром на графиках)
     pub ref_curves: Option<(String, Curves)>,
+    /// Всплывающие уведомления (текст, время создания)
+    pub toasts: Vec<(String, std::time::Instant)>,
 }
 
 impl Default for App {
@@ -97,6 +99,7 @@ impl App {
             library_selected: None,
             plot_tab: Default::default(),
             ref_curves: None,
+            toasts: Vec::new(),
         };
         rust_i18n::set_locale(app.lang.as_str());
         app.ensure_computed();
@@ -113,6 +116,11 @@ impl App {
             EnclosureKind::Bandpass6 => &self.bp6,
             EnclosureKind::Line => &self.line,
         }
+    }
+
+    /// Показать всплывающее уведомление (5 секунд).
+    pub fn push_toast(&mut self, msg: String) {
+        self.toasts.push((msg, std::time::Instant::now()));
     }
 
     /// Пометить состояние изменёншимся — на следующем кадре всё пересчитается.

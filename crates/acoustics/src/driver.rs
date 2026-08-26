@@ -84,7 +84,7 @@ impl Default for Driver {
     fn default() -> Self {
         // Реалистичный 8" НЧ-динамик — стартовый пример для первого запуска.
         Self {
-            name: "8\" woofer (пример)".into(),
+            name: "8\" woofer".into(),
             manufacturer: String::new(),
             re: 3.2,
             le: 1.2,

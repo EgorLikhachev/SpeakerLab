@@ -39,18 +39,55 @@ pub fn num_field(
     v: &mut f64,
     speed: f64,
     range: std::ops::RangeInclusive<f64>,
-    unit: &str,
+    suffix: &str,
 ) -> bool {
     ui.label(label);
     let resp = ui.add(
         DragValue::new(v)
             .speed(speed)
             .range(range)
-            .suffix(unit)
+            .suffix({
+                let u = unit(suffix);
+                if u.is_empty() {
+                    u
+                } else {
+                    format!(" {u}")
+                }
+            })
             .custom_formatter(|n, _| fnum(n)),
     );
     ui.end_row();
     resp.changed()
+}
+
+/// Локализованный суффикс единицы измерения.
+pub fn unit(suffix: &str) -> String {
+    let key = match suffix.trim() {
+        "Гц" => "unit.hz",
+        "мм" => "unit.mm",
+        "см²" => "unit.cm2",
+        "л" => "unit.l",
+        "м" => "unit.m",
+        "Ом" => "unit.ohm",
+        "мГн" => "unit.mh",
+        "В" => "unit.v",
+        "Вт" => "unit.w",
+        "дБ" => "unit.db",
+        "г" => "unit.g",
+        "м/с" => "unit.mps",
+        "Т·м" => "unit.tm",
+        _ => return suffix.trim().to_string(),
+    };
+    t!(key).to_string()
+}
+
+/// Значение с локализованной единицей: "34.2 Hz".
+pub fn uv(value: String, suffix: &str) -> String {
+    if suffix.is_empty() {
+        value
+    } else {
+        format!("{value} {}", unit(suffix))
+    }
 }
 
 /// Заголовок секции.
