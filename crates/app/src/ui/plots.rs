@@ -144,7 +144,7 @@ fn format_y(y: f64) -> String {
 fn ref_line<'a>(label: &str, freq: &[f64], vals: &[f64]) -> Line<'a> {
     Line::new(format!("({label})"), log_points(freq, vals))
         .color(egui::Color32::GRAY)
-        .width(1.2)
+        .width(1.2_f32)
         .style(LineStyle::dashed_dense())
 }
 
@@ -156,7 +156,7 @@ fn tuning_markers(app: &App) -> Vec<VLine> {
             out.push(
                 VLine::new(t!(key).to_string(), x.log10())
                     .color(colors::HINT)
-                    .width(1.0)
+                    .width(1.0_f32)
                     .style(LineStyle::dashed_dense()),
             );
         }
@@ -181,7 +181,7 @@ fn spl(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
         log_points(&curves.freq, &curves.spl),
     )
     .color(colors::SPL)
-    .width(1.8);
+    .width(1.8_f32);
     let markers = tuning_markers(app);
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.spl));
     base_plot("spl")
@@ -203,7 +203,7 @@ fn impedance(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
         log_points(&curves.freq, &curves.z_mag),
     )
     .color(colors::Z)
-    .width(1.8);
+    .width(1.8_f32);
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.z_mag));
     base_plot("impedance")
         .y_axis_label(t!("plot.z.y").to_string())
@@ -221,7 +221,7 @@ fn phase(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
         log_points(&curves.freq, &curves.z_phase),
     )
     .color(colors::PHASE)
-    .width(1.8);
+    .width(1.8_f32);
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.z_phase));
     base_plot("phase")
         .y_axis_label(t!("plot.phase.y").to_string())
@@ -239,11 +239,11 @@ fn excursion(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
         log_points(&curves.freq, &curves.excursion_mm),
     )
     .color(colors::EXCURSION)
-    .width(1.8);
+    .width(1.8_f32);
     let xmax = app.driver.xmax;
     let xmax_line = egui_plot::HLine::new(t!("plot.xmax_line").to_string(), xmax)
         .color(colors::DANGER)
-        .width(1.2)
+        .width(1.2_f32)
         .style(LineStyle::dashed_dense());
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.excursion_mm));
     let markers = tuning_markers(app);
@@ -271,14 +271,14 @@ fn port_vel(ui: &mut Ui, curves: &Curves) {
         log_points(&curves.freq, vel),
     )
     .color(colors::PORT_VEL)
-    .width(1.8);
+    .width(1.8_f32);
     let caution = egui_plot::HLine::new(t!("plot.vel.caution").to_string(), 17.0)
         .color(colors::WARNING)
-        .width(1.0)
+        .width(1.0_f32)
         .style(LineStyle::dashed_dense());
     let limit = egui_plot::HLine::new(t!("plot.vel.excessive").to_string(), 22.0)
         .color(colors::DANGER)
-        .width(1.0)
+        .width(1.0_f32)
         .style(LineStyle::dashed_dense());
     base_plot("port_vel")
         .y_axis_label(t!("plot.vel.y").to_string())
@@ -295,7 +295,7 @@ fn group_delay(ui: &mut Ui, curves: &Curves, ref_c: Option<&Curves>) {
         log_points(&curves.freq, &curves.group_delay_ms),
     )
     .color(colors::GROUP_DELAY)
-    .width(1.8);
+    .width(1.8_f32);
     let ref_l = ref_c.map(|rc| ref_line(&t!("plot.ref"), &rc.freq, &rc.group_delay_ms));
     base_plot("group_delay")
         .y_axis_label(t!("plot.gd.y").to_string())

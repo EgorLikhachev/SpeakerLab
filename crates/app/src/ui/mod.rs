@@ -63,7 +63,7 @@ fn draw_toasts(app: &mut App, ctx: &egui::Context) {
         .show(ctx, |ui| {
             egui::Frame::new()
                 .fill(egui::Color32::from_rgb(60, 26, 26))
-                .stroke(egui::Stroke::new(1.0, crate::ui::util::colors::DANGER))
+                .stroke(egui::Stroke::new(1.0_f32, crate::ui::util::colors::DANGER))
                 .corner_radius(6.0)
                 .inner_margin(egui::Margin::same(10))
                 .show(ui, |ui| {
