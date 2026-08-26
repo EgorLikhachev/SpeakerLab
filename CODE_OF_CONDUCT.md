@@ -59,9 +59,12 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-**<your-email@example.com>** (replace with the project maintainer's contact
-address). All complaints will be reviewed and investigated promptly and fairly.
+reported to the community leaders responsible for enforcement via GitHub's
+private vulnerability reporting form at
+[https://github.com/EgorLikhachev/SpeakerLab/security/advisories/new](https://github.com/EgorLikhachev/SpeakerLab/security/advisories/new)
+(choose "Other" as the vulnerability type) or by mentioning the maintainer
+**@EgorLikhachev** in a GitHub issue marked as a conduct report. All
+complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the
 reporter of any incident.

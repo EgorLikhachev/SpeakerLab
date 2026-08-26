@@ -15,12 +15,12 @@ limited to local files and third-party dependencies.
 If you discover a security vulnerability, please **do not open a public
 GitHub issue**.
 
-Instead, report it privately:
+Instead, report it privately using GitHub's built-in private vulnerability
+reporting:
 
-1. Use GitHub's private vulnerability reporting:
+1. Go to
    [Report a vulnerability](https://github.com/EgorLikhachev/SpeakerLab/security/advisories/new)
-2. Or email the maintainer at **<your-email@example.com>**
-   (replace with the project maintainer's contact address).
+2. Fill in the details and submit. Only maintainers can see the report.
 
 Please include:
 
