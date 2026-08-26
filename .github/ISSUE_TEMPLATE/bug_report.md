@@ -28,12 +28,12 @@ What you expected to happen instead.
 Please paste the driver T/S parameters and enclosure parameters you used,
 and what the application showed vs. what you expected:
 
-```
+```text
 Driver: Fs=…, Qms=…, Qes=…, Vas=…, Sd=…, Re=…, Le=…, Xmax=…
 Enclosure: type=…, parameters=…
 Application shows: …
 Expected: …
-```
+```text
 
 **Environment**
 

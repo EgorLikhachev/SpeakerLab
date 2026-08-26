@@ -3,7 +3,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/EgorLikhachev/SpeakerLab/ci.yml?branch=main&label=CI&logo=github)](https://github.com/EgorLikhachev/SpeakerLab/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue)](CHANGELOG.md)
-[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange?logo=rust)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/rust-1.88%2B-orange?logo=rust)](https://www.rust-lang.org)
 
 SpeakerLab is a cross-platform desktop application for designing loudspeaker
 enclosures. Enter the Thiele-Small parameters of a driver, pick an enclosure
@@ -77,14 +77,14 @@ Personal driver library (open JSON, easy to share):
 
 ## Prerequisites
 
-- [Rust](https://www.rust-lang.org/tools/install) **1.85 or newer** (stable toolchain).
+- [Rust](https://www.rust-lang.org/tools/install) **1.88 or newer** (stable toolchain).
 - For curve verification only: Python 3.10+ with `numpy`.
 
 Linux additionally needs GUI development packages (Ubuntu/Debian):
 
 ```bash
 sudo apt install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxkbcommon-dev
-```
+```text
 
 ## Installation
 
@@ -99,7 +99,7 @@ cargo run -p speakerlab
 # Or make an optimized release build
 cargo build --release -p speakerlab
 # The binary is at target/release/speakerlab (.exe on Windows)
-```
+```text
 
 ## Usage
 
@@ -121,7 +121,7 @@ Example: verify the physics engine end to end (see the next section):
 ```bash
 cargo run -p speakerlab-acoustics --example dump_curves > verify/curves.json
 python verify/verify.py
-```
+```text
 
 ## Data and Configuration
 
@@ -146,7 +146,7 @@ cargo clippy --all-targets -- -D warnings   # lint check
 # Independent cross-verification (Python + numpy):
 cargo run -p speakerlab-acoustics --example dump_curves > verify/curves.json
 python verify/verify.py          # 14 independent checks
-```
+```text
 
 The Python verifier re-implements the electro-mechano-acoustic circuit from
 scratch and additionally checks against closed-form textbook formulas:
@@ -166,7 +166,7 @@ rolloff, quarter-wave resonance). Summary of what is verified:
 
 ## Project Structure
 
-```
+```text
 SpeakerLab/
 ├── crates/
 │   ├── acoustics/        # Physics core, no UI dependencies
@@ -191,7 +191,7 @@ SpeakerLab/
 ├── verify/               # Independent Python verification
 │   └── verify.py
 └── .github/              # CI workflows and issue/PR templates
-```
+```text
 
 ## Contributing
 
