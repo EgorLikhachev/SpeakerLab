@@ -25,6 +25,13 @@ pub struct PassiveBox {
     pub fs_pr: f64,
     /// Добротность потерь ящика
     pub ql: f64,
+    /// Предельный ход ПИ, мм
+    #[serde(default = "default_pr_xmax")]
+    pub xmax_mm: f64,
+}
+
+fn default_pr_xmax() -> f64 {
+    10.0
 }
 
 impl Default for PassiveBox {
@@ -35,6 +42,7 @@ impl Default for PassiveBox {
             sd_cm2: 220.0,
             fs_pr: 22.0,
             ql: 10.0,
+            xmax_mm: 10.0,
         }
     }
 }

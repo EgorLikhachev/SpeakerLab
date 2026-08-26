@@ -67,6 +67,8 @@ pub struct App {
     pub toasts: Vec<(String, std::time::Instant)>,
     /// Фильтр поиска в библиотеке динамиков
     pub lib_filter: String,
+    /// Ширина передней панели для baffle step, м (0 — не учитывать)
+    pub baffle_m: f64,
 }
 
 /// Сохраняемое между запусками состояние (кроме размеров окна — их
@@ -110,6 +112,7 @@ impl App {
             ref_curves: None,
             toasts: Vec::new(),
             lib_filter: String::new(),
+            baffle_m: 0.0,
         };
         if let Some(p) = persisted {
             if let Some(lang) = p.lang {
@@ -192,7 +195,13 @@ impl App {
             self.summary = None;
             return; // остаёмся dirty: параметры могут стать валидными снова
         }
-        let curves = simulate(&self.driver, self.model(), &self.sim);
+        let mut sim = self.sim.clone();
+        sim.baffle_width_m = if self.baffle_m > 0.01 {
+            Some(self.baffle_m)
+        } else {
+            None
+        };
+        let curves = simulate(&self.driver, self.model(), &sim);
         let summary = summarize(&curves, self.tuning_hz());
         self.limits = Some(compute_limits(
             &curves,

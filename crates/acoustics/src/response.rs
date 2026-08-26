@@ -16,6 +16,10 @@ pub struct SimConfig {
     pub fmin: f64,
     pub fmax: f64,
     pub points: usize,
+    /// Ширина передней панели (baffle), м. Some — учитывать baffle step
+    /// (переход излучения 2π → 4π с потерей ~6 дБ ниже частоты шага).
+    #[serde(default)]
+    pub baffle_width_m: Option<f64>,
 }
 
 impl Default for SimConfig {
@@ -25,7 +29,28 @@ impl Default for SimConfig {
             fmin: 10.0,
             fmax: 20000.0,
             points: 512,
+            baffle_width_m: None,
         }
+    }
+}
+
+/// Поправка baffle step, дБ (положительная на ВЧ).
+///
+/// Классическая аппроксимация: f_b = 115/W [м]; ниже f_b/2 — полный
+/// эффект (−6 дБ), выше 2·f_b — нет; между — плавный переход
+/// 6 дБ/окт. (Венгенрот/Олсон, упрощение).
+pub fn baffle_step_db(freq: f64, baffle_width_m: f64) -> f64 {
+    if baffle_width_m <= 0.0 {
+        return 0.0;
+    }
+    let fb = 115.0 / baffle_width_m;
+    if freq <= fb / 2.0 {
+        -6.0
+    } else if freq >= fb * 2.0 {
+        0.0
+    } else {
+        // лог-интерполяция: −6..0 дБ на две октавы
+        -6.0 + 6.0 * (freq / (fb / 2.0)).log2() / 2.0
     }
 }
 
@@ -43,6 +68,9 @@ pub struct Curves {
     pub excursion_mm: Vec<f64>,
     /// Скорость воздуха в порте, м/с (если порт задан)
     pub port_vel_m_s: Option<Vec<f64>>,
+    /// Перемещение «поршня» порта/ПИ (амплитуда, мм) — ход ПИ для ПИ
+    #[serde(default)]
+    pub port_disp_mm: Option<Vec<f64>>,
     /// Групповая задержка, мс
     pub group_delay_ms: Vec<f64>,
     /// SPL «выравнивания» без индуктивности катушки (Le = 0):
@@ -124,6 +152,7 @@ pub fn simulate(driver: &Driver, enclosure: &dyn EnclosureModel, cfg: &SimConfig
     let mut z_phase = Vec::with_capacity(n);
     let mut excursion_mm = Vec::with_capacity(n);
     let mut port_vel: Vec<f64> = Vec::with_capacity(n);
+    let mut port_disp: Vec<f64> = Vec::with_capacity(n);
     let mut u_rad_phase: Vec<f64> = Vec::with_capacity(n);
 
     let has_port = enclosure
@@ -141,7 +170,10 @@ pub fn simulate(driver: &Driver, enclosure: &dyn EnclosureModel, cfg: &SimConfig
 
         // Дальнее поле, полупространство, 1 м: p = ω·ρ₀·|U|/(2π·r)
         let p_far = omega * AIR_DENSITY * u_rad.norm() / TAU;
-        let spl_db = 20.0 * (p_far.max(1e-30) / P_REF).log10();
+        let mut spl_db = 20.0 * (p_far.max(1e-30) / P_REF).log10();
+        if let Some(w) = cfg.baffle_width_m {
+            spl_db += baffle_step_db(f, w);
+        }
         spl.push(spl_db.max(DB_FLOOR));
 
         // То же без Le — только излучение, для метрик выравнивания.
@@ -150,7 +182,11 @@ pub fn simulate(driver: &Driver, enclosure: &dyn EnclosureModel, cfg: &SimConfig
         let p_a = op_a.u_diaphragm * za_a;
         let u_a = enclosure.radiated_velocity(&d_align, p_a, omega, op_a.u_diaphragm);
         let p_far_a = omega * AIR_DENSITY * u_a.norm() / TAU;
-        alignment_spl.push((20.0 * (p_far_a.max(1e-30) / P_REF).log10()).max(DB_FLOOR));
+        let mut spl_a = 20.0 * (p_far_a.max(1e-30) / P_REF).log10();
+        if let Some(w) = cfg.baffle_width_m {
+            spl_a += baffle_step_db(f, w);
+        }
+        alignment_spl.push(spl_a.max(DB_FLOOR));
 
         z_mag.push(op.z_in.norm());
         z_phase.push(op.z_in.arg().to_degrees());
@@ -161,8 +197,15 @@ pub fn simulate(driver: &Driver, enclosure: &dyn EnclosureModel, cfg: &SimConfig
             if let Some((u_p, area)) = enclosure.port_flow(driver, p_node, omega) {
                 let v = if area > 0.0 { u_p.norm() / area } else { 0.0 };
                 port_vel.push(v);
+                let disp = if area > 0.0 {
+                    u_p.norm() / (omega * area) * 1.0e3
+                } else {
+                    0.0
+                };
+                port_disp.push(disp);
             } else {
                 port_vel.push(0.0);
+                port_disp.push(0.0);
             }
         }
 
@@ -179,6 +222,7 @@ pub fn simulate(driver: &Driver, enclosure: &dyn EnclosureModel, cfg: &SimConfig
         z_phase,
         excursion_mm,
         port_vel_m_s: has_port.then_some(port_vel),
+        port_disp_mm: has_port.then_some(port_disp),
         group_delay_ms,
     }
 }
@@ -536,6 +580,73 @@ mod tests {
         assert!(curves.group_delay_ms.iter().all(|t| t.is_finite()));
         let peak = curves.group_delay_ms.iter().cloned().fold(0.0f64, f64::max);
         assert!(peak > 5.0, "пик ГЗ {peak:.1} мс — подозрительно мал");
+    }
+
+    #[test]
+    fn pr_excursion_peaks_at_tuning() {
+        // На настройке ход ПИ доминирует, ход диффузора минимален.
+        let d = Driver::default();
+        let b = crate::passive::PassiveBox::default();
+        let curves = simulate(&d, &b, &SimConfig::default());
+        let disp = curves.port_disp_mm.expect("ход ПИ");
+        let fb = b.tuning_hz();
+        let at = |arr: &[f64], f: f64| -> f64 {
+            let i = curves
+                .freq
+                .iter()
+                .enumerate()
+                .min_by(|a, c| (a.1 - f).abs().total_cmp(&(c.1 - f).abs()))
+                .unwrap()
+                .0;
+            arr[i]
+        };
+        assert!(
+            at(&disp, fb) > 3.0 * at(&disp, fb * 2.0),
+            "ход ПИ на настройке должен доминировать"
+        );
+        assert!(at(&curves.excursion_mm, fb) < at(&curves.excursion_mm, fb * 0.7));
+    }
+
+    #[test]
+    fn baffle_step_shape() {
+        // Панель 0.4 м: f_b = 287.5 Гц; ниже 144 Гц −6 дБ, выше 575 — 0
+        assert_eq!(baffle_step_db(100.0, 0.4), -6.0);
+        assert_eq!(baffle_step_db(1000.0, 0.4), 0.0);
+        let mid = baffle_step_db(287.5, 0.4);
+        assert!(
+            (-3.2..=-2.8).contains(&mid),
+            "в центре перехода {mid:.2} дБ"
+        );
+
+        // Кривая SPL с шагом на 6 дБ ниже, в полосе — та же
+        let d = Driver::default();
+        let b = SealedBox {
+            vb: 50.0,
+            ..Default::default()
+        };
+        let plain = simulate(&d, &b, &SimConfig::default());
+        let stepped = simulate(
+            &d,
+            &b,
+            &SimConfig {
+                baffle_width_m: Some(0.4),
+                ..Default::default()
+            },
+        );
+        let at = |c: &Curves, f: f64| -> f64 {
+            let i = c
+                .freq
+                .iter()
+                .enumerate()
+                .min_by(|a, b| (a.1 - f).abs().total_cmp(&(b.1 - f).abs()))
+                .unwrap()
+                .0;
+            c.spl[i]
+        };
+        let low_delta = at(&stepped, 50.0) - at(&plain, 50.0);
+        let high_delta = at(&stepped, 4000.0) - at(&plain, 4000.0);
+        assert!((low_delta + 6.0).abs() < 0.2, "низ {low_delta:.2} дБ");
+        assert!(high_delta.abs() < 0.2, "верх {high_delta:.2} дБ");
     }
 
     #[test]

@@ -151,6 +151,19 @@ fn top_bar(app: &mut App, ctx: &egui::Context) {
                     app.set_lang("ru");
                 }
                 ui.separator();
+                ui.label(t!("top.baffle").to_string());
+                let mut b = app.baffle_m;
+                let rb = ui.add(
+                    egui::DragValue::new(&mut b)
+                        .speed(0.01)
+                        .range(0.0..=2.0)
+                        .suffix(" m"),
+                );
+                if rb.changed() {
+                    app.baffle_m = b;
+                    app.mark_dirty();
+                }
+                ui.separator();
                 ui.label(t!("top.voltage").to_string());
                 let mut v = app.sim.voltage;
                 let resp = ui.add(

@@ -240,6 +240,25 @@ fn excursion(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
     )
     .color(colors::EXCURSION)
     .width(1.8_f32);
+    let pr_line = if app.kind == EnclosureKind::Passive {
+        curves.port_disp_mm.as_ref().map(|d| {
+            Line::new(t!("plot.pr_exc").to_string(), log_points(&curves.freq, d))
+                .color(colors::PORT_VEL)
+                .width(1.6_f32)
+        })
+    } else {
+        None
+    };
+    let pr_limit = if app.kind == EnclosureKind::Passive {
+        Some(
+            egui_plot::HLine::new(t!("plot.pr_xmax").to_string(), app.passive.xmax_mm)
+                .color(colors::DANGER)
+                .width(1.0_f32)
+                .style(LineStyle::dashed_dense()),
+        )
+    } else {
+        None
+    };
     let xmax = app.driver.xmax;
     let xmax_line = egui_plot::HLine::new(t!("plot.xmax_line").to_string(), xmax)
         .color(colors::DANGER)
@@ -251,10 +270,16 @@ fn excursion(ui: &mut Ui, app: &App, curves: &Curves, ref_c: Option<&Curves>) {
         .y_axis_label(t!("plot.exc.y").to_string())
         .show(ui, |pu| {
             pu.line(line);
+            if let Some(pr) = pr_line {
+                pu.line(pr);
+            }
             if let Some(r) = ref_l {
                 pu.line(r);
             }
             pu.hline(xmax_line);
+            if let Some(l) = pr_limit {
+                pu.hline(l);
+            }
             for m in markers {
                 pu.vline(m);
             }
