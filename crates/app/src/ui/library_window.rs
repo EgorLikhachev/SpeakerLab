@@ -22,6 +22,17 @@ pub fn window(ctx: &Context, app: &mut App) {
 }
 
 fn body(ui: &mut Ui, app: &mut App) {
+    // Поиск
+    ui.horizontal(|ui| {
+        ui.label(t!("lib.search").to_string());
+        ui.text_edit_singleline(&mut app.lib_filter);
+        let shown = app
+            .library
+            .iter()
+            .filter(|d| matches_filter(d, &app.lib_filter))
+            .count();
+        ui.weak(format!("{}/{}", shown, app.library.len()));
+    });
     ui.horizontal(|ui| {
         if ui.button(t!("lib.save_current").to_string()).clicked()
             && library::save_driver(&app.driver).is_ok()
@@ -50,8 +61,17 @@ fn body(ui: &mut Ui, app: &mut App) {
 
     let mut action: Option<LibAction> = None;
     let mut selected = app.library_selected;
+    // Индексы, видимые после фильтра
+    let visible: Vec<usize> = app
+        .library
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| matches_filter(d, &app.lib_filter))
+        .map(|(i, _)| i)
+        .collect();
     egui::ScrollArea::vertical().show(ui, |ui| {
-        for (i, d) in app.library.iter().enumerate() {
+        for i in visible {
+            let d = &app.library[i];
             let is_sel = selected == Some(i);
             let title = if d.manufacturer.is_empty() {
                 d.name.clone()
@@ -142,4 +162,9 @@ fn sanitize(s: &str) -> String {
             }
         })
         .collect()
+}
+
+fn matches_filter(d: &speakerlab_acoustics::driver::Driver, filter: &str) -> bool {
+    let f = filter.trim().to_lowercase();
+    f.is_empty() || d.name.to_lowercase().contains(&f) || d.manufacturer.to_lowercase().contains(&f)
 }

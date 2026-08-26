@@ -114,6 +114,8 @@ pub fn simulate(driver: &Driver, enclosure: &dyn EnclosureModel, cfg: &SimConfig
     // Копия динамика без индуктивности — для метрик выравнивания (F3 и т.п.).
     let mut d_align = driver.clone();
     d_align.le = 0.0;
+    d_align.le_model = crate::driver::LeModel::Simple;
+    d_align.kes = 0.0;
 
     let mut freq = Vec::with_capacity(n);
     let mut spl = Vec::with_capacity(n);

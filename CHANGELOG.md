@@ -9,10 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- LR-2 lossy voice-coil inductance model (more accurate high-frequency rolloff)
 - Baffle-step / diffraction options
 - PNG export of graphs
 - Bundled driver database
+
+## [0.2.0] - 2026-08-26
+
+### Added
+
+- Voltage limits: maximum voltage/power before exceeding Xmax, port air
+  velocity, or thermal rating (WinISD-style), shown in the summary bar
+  with a warning when the current generator voltage exceeds the limit.
+- Meaningful summary metrics: \|Z\| max searched in 15–500 Hz (system
+  resonance, not the HF inductance rise), excursion max in 15–300 Hz,
+  and a new "excursion at tuning" metric.
+- LR-2 semi-inductance voice-coil model (`Z = Re + Kes·√(jω)`) with a
+  +3 dB/oct HF impedance slope, closer to real drivers than the ideal
+  +6 dB/oct inductance; switchable per driver.
+- UI persistence: window size, language, active graph tab, and generator
+  voltage are remembered between launches.
+- Driver library search/filter with a visible counter.
+- "Port mismatch" warning when the applied port was designed for a
+  different Fb than the current tuning.
+- Error toasts (5-second popups) instead of invisible stderr messages.
+- README screenshots (main view, port calculator, box dimensions,
+  TL editor, driver library).
+- CI: independent Python verification (20 checks) runs on every push;
+  MSRV job; release workflow building Windows/Linux/macOS binaries.
+
+### Fixed
+
+- Library save failed for driver names containing quotes or other
+  characters that are illegal in Windows file names.
+- Units are now fully localized in the English interface (Hz, Ω, mm, L…).
+- V-limit chip showed empty watts; box-dimensions line missed the ×
+  separator and duplicated the unit.
+
+### Changed
+
+- MSRV raised to 1.88 (the dependency graph requires it).
 
 ## [0.1.0] - 2026-08-25
 
@@ -42,5 +77,6 @@ Initial public release.
   verification (14 checks: independent circuit re-implementation,
   textbook closed-form formulas, qualitative physics signatures).
 
-[Unreleased]: https://github.com/EgorLikhachev/SpeakerLab/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/EgorLikhachev/SpeakerLab/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/EgorLikhachev/SpeakerLab/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/EgorLikhachev/SpeakerLab/releases/tag/v0.1.0

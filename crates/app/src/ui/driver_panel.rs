@@ -156,6 +156,47 @@ pub fn show(ui: &mut Ui, app: &mut App) {
                 ui.colored_label(color, format!("⚠ {text}"));
             }
 
+            // Модель индуктивности катушки
+            egui::CollapsingHeader::new(t!("driver.adv").to_string())
+                .default_open(false)
+                .show(ui, |ui| {
+                    let mut ch2 = false;
+                    egui::Grid::new("le_model").num_columns(2).show(ui, |ui| {
+                        ui.label(t!("driver.le_model").to_string());
+                        let cur = match app.driver.le_model {
+                            speakerlab_acoustics::driver::LeModel::Simple => t!("driver.le.simple"),
+                            speakerlab_acoustics::driver::LeModel::Semi => t!("driver.le.semi"),
+                        };
+                        egui::ComboBox::from_id_salt("le_model")
+                            .selected_text(cur.to_string())
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(
+                                    &mut app.driver.le_model,
+                                    speakerlab_acoustics::driver::LeModel::Simple,
+                                    t!("driver.le.simple").to_string(),
+                                );
+                                ui.selectable_value(
+                                    &mut app.driver.le_model,
+                                    speakerlab_acoustics::driver::LeModel::Semi,
+                                    t!("driver.le.semi").to_string(),
+                                );
+                            });
+                        ui.end_row();
+                        ch2 |= num_field(
+                            ui,
+                            &t!("driver.kes"),
+                            &mut app.driver.kes,
+                            0.005,
+                            0.0..=10.0,
+                            "",
+                        );
+                    });
+                    if ch2 {
+                        app.mark_dirty();
+                    }
+                    ui.weak(t!("driver.kes_hint").to_string());
+                });
+
             ui.add_space(6.0);
             ui.horizontal(|ui| {
                 if ui.button(t!("driver.save_library").to_string()).clicked() {

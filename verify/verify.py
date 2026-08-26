@@ -230,6 +230,20 @@ def main():
           abs(exc_peak / data["xmax_mm"] - 1.0) < 0.02,
           f"{exc_peak:.3f} мм vs Xmax {data['xmax_mm']} мм")
 
+    print("== 9. Полуиндуктивность катушки (LR-2) ==")
+    zs = data["z_semi"]
+    le_h = data["driver"]["le_mH"] / 1e3
+    re = data["driver"]["re"]
+    kes = le_h * math.sqrt(2 * math.pi) * math.sqrt(1000.0)
+    worst = 0.0
+    for f, z_dump in zs:
+        w = 2 * math.pi * f
+        k = kes * math.sqrt(w / 2)
+        z_py = abs(complex(re + k, k))
+        worst = max(worst, abs(z_py - z_dump))
+    check("Z = Re + Kes·√(jω) совпадает с независимой формулой", worst < 1e-9,
+          f"max |Δ| = {worst:.2e} Ом (Kes = {kes:.4f})")
+
     print()
     failed = sum(1 for _, ok, _ in results if not ok)
     total = len(results)

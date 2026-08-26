@@ -10,7 +10,7 @@ homepage.workspace = true
 
 [dependencies]
 speakerlab-acoustics = { path = "../acoustics" }
-eframe = "0.32"
+eframe = { version = "0.32", features = ["persistence"] }
 egui = "0.32"
 egui_plot = "0.33"
 num-complex = "0.4"

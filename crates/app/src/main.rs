@@ -3,6 +3,8 @@
 mod library;
 mod project;
 mod state;
+#[cfg(test)]
+mod tests;
 mod ui;
 
 rust_i18n::i18n!("locales", fallback = "en");
@@ -22,7 +24,7 @@ fn main() -> eframe::Result<()> {
         options,
         Box::new(|cc| {
             cc.egui_ctx.set_pixels_per_point(1.2);
-            Ok(Box::new(state::App::new()))
+            Ok(Box::new(state::App::new(cc)))
         }),
     )
 }
@@ -30,5 +32,9 @@ fn main() -> eframe::Result<()> {
 impl eframe::App for state::App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         ui::show(self, ctx, frame);
+    }
+
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        self.persist(storage);
     }
 }

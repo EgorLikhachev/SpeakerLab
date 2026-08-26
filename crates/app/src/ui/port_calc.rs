@@ -92,6 +92,7 @@ impl PortCalc {
         PortSpec {
             geometry: self.geometry(),
             count: self.count.max(1),
+            tuned_fb: None,
         }
     }
 
@@ -191,7 +192,10 @@ fn body(ui: &mut Ui, app: &mut App) {
         {
             app.vented.vb = vb;
             app.vented.fb = fb_result;
-            app.vented.port = Some(spec.clone());
+            app.vented.port = Some(PortSpec {
+                tuned_fb: Some(fb_result),
+                ..spec.clone()
+            });
             app.mark_dirty();
         }
         if app.kind == EnclosureKind::Vented && ui.button(t!("portcalc.sync").to_string()).clicked()

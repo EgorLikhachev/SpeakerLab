@@ -66,11 +66,19 @@ impl PortGeometry {
 pub struct PortSpec {
     pub geometry: PortGeometry,
     pub count: u32,
+    /// Частота, под которую порт был рассчитан (для предупреждения
+    /// «порт не соответствует Fb» при последующих изменениях настройки)
+    #[serde(default)]
+    pub tuned_fb: Option<f64>,
 }
 
 impl PortSpec {
     pub fn new(geometry: PortGeometry) -> Self {
-        Self { geometry, count: 1 }
+        Self {
+            geometry,
+            count: 1,
+            tuned_fb: None,
+        }
     }
 
     /// Площадь одного порта, м².

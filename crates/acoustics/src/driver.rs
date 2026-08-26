@@ -1,9 +1,23 @@
 //! T/S-параметры динамика, производные величины и валидация.
 
+use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::TAU;
 
 use crate::air_compliance;
+
+/// Модель индуктивности звуковой катушки.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LeModel {
+    /// Простая: Z = Re + jωLe
+    #[default]
+    Simple,
+    /// Полуиндуктивность (LR-2, модель Райта/Вандеркуя):
+    /// Z = Re + Kes·√(jω) — реальные катушки имеют наклон |Z| +3 дБ/окт,
+    /// а не +6 дБ/окт идеальной индуктивности.
+    Semi,
+}
 
 /// Поле T/S-параметра — для локализуемых сообщений валидации.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -78,6 +92,12 @@ pub struct Driver {
     pub bl: f64,
     /// Масса подвижной системы, г. 0 — вычислить из Vas/Fs/Sd.
     pub mms: f64,
+    /// Модель индуктивности катушки
+    #[serde(default)]
+    pub le_model: LeModel,
+    /// Kes полуиндуктивности, Ом·√с. 0 — оценить из Le на 1 кГц.
+    #[serde(default)]
+    pub kes: f64,
 }
 
 impl Default for Driver {
@@ -98,6 +118,8 @@ impl Default for Driver {
             spl: 87.0,
             bl: 0.0,
             mms: 0.0,
+            le_model: LeModel::Simple,
+            kes: 0.0,
         }
     }
 }
@@ -150,6 +172,24 @@ impl Driver {
             self.bl
         } else {
             (TAU * self.fs * self.mms_kg() * self.re / self.qes).sqrt()
+        }
+    }
+
+    /// Импеданс катушки (электрическая ветвь) на круговой частоте ω.
+    pub fn voice_coil_impedance(&self, omega: f64) -> Complex64 {
+        let le_h = self.le * 1.0e-3;
+        match self.le_model {
+            LeModel::Simple => Complex64::new(self.re, omega * le_h),
+            LeModel::Semi => {
+                let kes = if self.kes > 0.0 {
+                    self.kes
+                } else {
+                    le_h * TAU.sqrt() * (1000.0f64).sqrt()
+                };
+                // √(jω) = √(ω/2)·(1+j)
+                let k = kes * (omega / 2.0).sqrt();
+                Complex64::new(self.re + k, k)
+            }
         }
     }
 
@@ -235,6 +275,49 @@ mod tests {
         let back: Driver = serde_json::from_str(&json).unwrap();
         assert_eq!(back.name, d.name);
         assert_eq!(back.re, d.re);
+    }
+
+    #[test]
+    fn hf_slope_simple_6db_semi_3db_per_octave() {
+        let simple = Driver::default();
+        let semi = Driver {
+            le_model: LeModel::Semi,
+            ..Driver::default()
+        };
+        let z = |d: &Driver, f: f64| d.voice_coil_impedance(TAU * f).norm();
+        let slope = |d: &Driver| {
+            let z2k = z(d, 2000.0);
+            let z8k = z(d, 8000.0);
+            20.0 * (z8k / z2k).log10() / 2.0 // дБ на октаву (2 октавы)
+        };
+        let s_simple = slope(&simple);
+        let s_semi = slope(&semi);
+        assert!(
+            (5.4..=6.4).contains(&s_simple),
+            "Simple наклон {s_simple:.2} дБ/окт (ожидание ~6)"
+        );
+        assert!(
+            (2.4..=3.4).contains(&s_semi),
+            "Semi наклон {s_semi:.2} дБ/окт (ожидание ~3)"
+        );
+    }
+
+    #[test]
+    fn kes_estimate_matches_explicit() {
+        let auto = Driver {
+            le_model: LeModel::Semi,
+            ..Driver::default()
+        };
+        let le_h = auto.le * 1.0e-3;
+        let kes = le_h * TAU.sqrt() * (1000.0f64).sqrt();
+        let explicit = Driver {
+            le_model: LeModel::Semi,
+            kes,
+            ..Driver::default()
+        };
+        let w = TAU * 500.0;
+        let diff = (auto.voice_coil_impedance(w) - explicit.voice_coil_impedance(w)).norm();
+        assert!(diff < 1e-12);
     }
 
     #[test]

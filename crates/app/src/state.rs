@@ -65,16 +65,25 @@ pub struct App {
     pub ref_curves: Option<(String, Curves)>,
     /// Всплывающие уведомления (текст, время создания)
     pub toasts: Vec<(String, std::time::Instant)>,
+    /// Фильтр поиска в библиотеке динамиков
+    pub lib_filter: String,
 }
 
-impl Default for App {
-    fn default() -> Self {
-        Self::new()
-    }
+/// Сохраняемое между запусками состояние (кроме размеров окна — их
+/// eframe persistence хранит сам).
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+pub struct AppPersist {
+    pub lang: Option<String>,
+    pub voltage: Option<f64>,
+    /// Индекс вкладки графика (0..5)
+    pub plot_tab: Option<u8>,
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let persisted: Option<AppPersist> = cc
+            .storage
+            .and_then(|st| eframe::get_value(st, eframe::APP_KEY));
         let mut app = Self {
             lang: library::load_settings().lang,
             driver: Driver::default(),
@@ -100,10 +109,54 @@ impl App {
             plot_tab: Default::default(),
             ref_curves: None,
             toasts: Vec::new(),
+            lib_filter: String::new(),
         };
+        if let Some(p) = persisted {
+            if let Some(lang) = p.lang {
+                if lang == "ru" || lang == "en" {
+                    app.lang = lang;
+                }
+            }
+            if let Some(v) = p.voltage {
+                if v.is_finite() && (0.1..=200.0).contains(&v) {
+                    app.sim.voltage = v;
+                }
+            }
+            if let Some(tab) = p.plot_tab {
+                app.plot_tab = match tab {
+                    1 => crate::ui::plots::PlotTab::Impedance,
+                    2 => crate::ui::plots::PlotTab::Phase,
+                    3 => crate::ui::plots::PlotTab::Excursion,
+                    4 => crate::ui::plots::PlotTab::PortVel,
+                    5 => crate::ui::plots::PlotTab::GroupDelay,
+                    _ => crate::ui::plots::PlotTab::Spl,
+                };
+            }
+        }
         rust_i18n::set_locale(app.lang.as_str());
         app.ensure_computed();
         app
+    }
+
+    /// Сохранение состояния (вызывается eframe при выходе).
+    pub fn persist(&self, storage: &mut dyn eframe::Storage) {
+        let tab = match self.plot_tab {
+            crate::ui::plots::PlotTab::Spl => 0,
+            crate::ui::plots::PlotTab::Impedance => 1,
+            crate::ui::plots::PlotTab::Phase => 2,
+            crate::ui::plots::PlotTab::Excursion => 3,
+            crate::ui::plots::PlotTab::PortVel => 4,
+            crate::ui::plots::PlotTab::GroupDelay => 5,
+        };
+        eframe::set_value(
+            storage,
+            eframe::APP_KEY,
+            &AppPersist {
+                lang: Some(self.lang.clone()),
+                voltage: Some(self.sim.voltage),
+                plot_tab: Some(tab),
+            },
+        );
     }
 
     /// Активная модель оформления.

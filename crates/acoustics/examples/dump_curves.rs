@@ -105,6 +105,17 @@ fn main() {
         },
         "xmax_mm": d.xmax,
         "pe_w": d.pe,
+        "z_semi": (1..=8)
+            .map(|k| {
+                let f = 500.0 * k as f64;
+                let dm = Driver {
+                    le_model: speakerlab_acoustics::driver::LeModel::Semi,
+                    ..d.clone()
+                };
+                (f, dm.voice_coil_impedance(TAU * f).norm())
+            })
+            .collect::<Vec<(f64, f64)>>(),
+        "le_mH2": d.le,
         "z_vented": z_vented,
         "port_len_cm": len_cm,
         "eta0_spl_ref": spl_ref,

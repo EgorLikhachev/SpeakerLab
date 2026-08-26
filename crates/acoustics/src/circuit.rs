@@ -58,7 +58,7 @@ pub fn solve_point(driver: &Driver, za: Complex64, omega: f64, voltage: f64) -> 
     let sd = driver.sd_m2();
     let bl = driver.bl_tm();
 
-    let ze = Complex64::new(driver.re, omega * driver.le * 1.0e-3); // Le: мГн → Гн
+    let ze = driver.voice_coil_impedance(omega);
     let zm = Complex64::new(driver.rms(), omega * driver.mms_kg())
         + Complex64::new(0.0, -1.0 / (omega * driver.cms()))
         + za * sd * sd;

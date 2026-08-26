@@ -203,6 +203,26 @@ fn vented(ui: &mut Ui, app: &mut App) -> bool {
         }
     });
 
+    // Порт применён, но настройка Fb изменилась вручную
+    let mut port_mismatch = false;
+    if let Some(spec) = &app.vented.port {
+        if let Some(tuned) = spec.tuned_fb {
+            if tuned > 0.0 && (tuned - app.vented.fb).abs() / app.vented.fb > 0.01 {
+                port_mismatch = true;
+                ui.colored_label(
+                    colors::WARNING,
+                    t!(
+                        "warn.port_mismatch",
+                        tuned = fnum(tuned),
+                        fb = fnum(app.vented.fb)
+                    )
+                    .to_string(),
+                );
+            }
+        }
+    }
+    let _ = port_mismatch;
+
     let mut apply: Option<(f64, Option<f64>)> = None;
     let suggestions = suggest::vented_suggestions(&app.driver);
     if !suggestions.is_empty() {
