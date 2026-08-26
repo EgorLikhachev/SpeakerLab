@@ -5,7 +5,7 @@ use serde_json::json;
 use speakerlab_acoustics::circuit::{solve_point, EnclosureModel};
 use speakerlab_acoustics::driver::Driver;
 use speakerlab_acoustics::port::{EndCorrection, PortGeometry, PortSpec};
-use speakerlab_acoustics::response::{simulate, summarize, SimConfig};
+use speakerlab_acoustics::response::{compute_limits, simulate, summarize, SimConfig};
 use speakerlab_acoustics::sealed::SealedBox;
 use speakerlab_acoustics::vented::VentedBox;
 use speakerlab_acoustics::TAU;
@@ -23,7 +23,7 @@ fn main() {
     };
     let cfg = SimConfig::default();
     let curves_sealed = simulate(&d0, &sealed, &cfg);
-    let sum_sealed = summarize(&curves_sealed);
+    let sum_sealed = summarize(&curves_sealed, None);
 
     // 2) ФИ с потерями Ql=10 (как принято в литературе)
     let vented = VentedBox {
@@ -33,7 +33,7 @@ fn main() {
         ..Default::default()
     };
     let curves_vented = simulate(&d0, &vented, &cfg); // Le=0 для сравнения отклика
-    let sum_vented = summarize(&curves_vented);
+    let sum_vented = summarize(&curves_vented, Some(vented.fb));
 
     // импеданс ФИ считаем с реальной Le (для |Z| это важно)
     let z_vented: Vec<(f64, f64, f64)> = curves_vented
@@ -52,6 +52,9 @@ fn main() {
     let len_cm =
         speakerlab_acoustics::port::port_length_m(50.0, 35.0, &spec, EndCorrection::OneFlanged)
             * 1.0e2;
+
+    // Предельные напряжения ФИ (Le=0 кривые)
+    let limits = compute_limits(&curves_vented, cfg.voltage, d.xmax, d.pe, sum_vented.z_min);
 
     // 4) Эталонная чувствительность по формуле Тиля–Смолла
     let eta0_percent = 9.64e-10 * d.fs.powi(3) * d.vas / d.qes;
@@ -84,12 +87,24 @@ fn main() {
         "vented": {
             "vb_l": vented.vb, "fb": vented.fb, "ql": vented.ql,
             "f3": sum_vented.f3_low,
+            "z_max": sum_vented.z_max, "z_max_freq": sum_vented.z_max_freq,
+            "exc_max": sum_vented.excursion_max_mm,
+            "exc_max_freq": sum_vented.excursion_max_freq,
+            "exc_at_fb": sum_vented.excursion_at_tuning,
             "freq": curves_vented.freq,
             "spl": curves_vented.spl,
             "alignment_spl": curves_vented.alignment_spl,
             "excursion_mm": curves_vented.excursion_mm,
             "group_delay_ms": curves_vented.group_delay_ms,
         },
+        "limits": {
+            "v_xmax": limits.v_xmax,
+            "v_thermal": limits.v_thermal,
+            "v_limit": limits.v_limit,
+            "limiting": format!("{:?}", limits.limiting),
+        },
+        "xmax_mm": d.xmax,
+        "pe_w": d.pe,
         "z_vented": z_vented,
         "port_len_cm": len_cm,
         "eta0_spl_ref": spl_ref,

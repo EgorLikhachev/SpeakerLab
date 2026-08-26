@@ -51,6 +51,9 @@ pub struct Curves {
 }
 
 /// Сводка по результатам (для статусной строки и предупреждений).
+/// Максимумы ищутся в осмысленных полосах: |Z| — 15–500 Гц (иначе «максимум»
+/// всегда даёт рост индуктивности на ВЧ), ход — 15–300 Гц (ниже — вне
+/// рабочего диапазона, выше — ход всегда мал).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Summary {
     pub peak_spl: f64,
@@ -62,8 +65,43 @@ pub struct Summary {
     pub z_max_freq: f64,
     pub excursion_max_mm: f64,
     pub excursion_max_freq: f64,
+    /// Ход диффузора на частоте настройки (ФИ/ПИ/БП), мм
+    pub excursion_at_tuning: Option<f64>,
     pub port_vel_max_m_s: Option<f64>,
     pub port_vel_max_freq: f64,
+}
+
+/// Окно поиска максимума |Z|, Гц.
+const Z_WINDOW: (f64, f64) = (15.0, 500.0);
+/// Окно поиска максимума хода, Гц.
+const EXC_WINDOW: (f64, f64) = (15.0, 300.0);
+/// Окно расчёта предельных напряжений, Гц.
+const LIMIT_WINDOW: (f64, f64) = (15.0, 500.0);
+/// Предельная скорость воздуха в порте для расчёта Vмакс, м/с.
+pub const PORT_VEL_LIMIT_M_S: f64 = 17.0;
+
+/// Предельные напряжения системы (до нарушения ограничений).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Limits {
+    /// (Напряжение, частота) до достижения Xmax
+    pub v_xmax: Option<(f64, f64)>,
+    /// (Напряжение, частота) до предельной скорости порта
+    pub v_port: Option<(f64, f64)>,
+    /// Напряжение тепловой (мощностной) границы, В
+    pub v_thermal: Option<f64>,
+    /// Самое строгое из доступных ограничений, В
+    pub v_limit: Option<f64>,
+    /// Что именно ограничивает
+    pub limiting: LimitKind,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum LimitKind {
+    #[default]
+    None,
+    Xmax,
+    Port,
+    Thermal,
 }
 
 const DB_FLOOR: f64 = -120.0;
@@ -173,9 +211,10 @@ fn group_delay(freq: &[f64], phase: &[f64]) -> Vec<f64> {
     out
 }
 
-/// Сводка по кривым: −3 дБ, пики, максимумы.
+/// Сводка по кривым: −3 дБ, пики, максимумы в рабочих полосах.
+/// `tuning_hz` — частота настройки ФИ/ПИ/БП (для метрики «ход @ Fb»).
 /// Пик и частоты среза берутся из кривой выравнивания (без Le).
-pub fn summarize(curves: &Curves) -> Summary {
+pub fn summarize(curves: &Curves, tuning_hz: Option<f64>) -> Summary {
     let mut s = Summary {
         peak_spl: curves
             .alignment_spl
@@ -189,9 +228,11 @@ pub fn summarize(curves: &Curves) -> Summary {
         s.f3_high = crossing_above(&curves.freq, &curves.alignment_spl, s.peak_spl - 3.0);
     }
 
+    let in_band = |f: f64, w: (f64, f64)| f >= w.0 && f <= w.1;
+
     let mut z_min = f64::INFINITY;
     for (i, &z) in curves.z_mag.iter().enumerate() {
-        if z > s.z_max {
+        if in_band(curves.freq[i], Z_WINDOW) && z > s.z_max {
             s.z_max = z;
             s.z_max_freq = curves.freq[i];
         }
@@ -202,9 +243,22 @@ pub fn summarize(curves: &Curves) -> Summary {
     s.z_min = if z_min.is_finite() { z_min } else { 0.0 };
 
     for (i, &e) in curves.excursion_mm.iter().enumerate() {
-        if e > s.excursion_max_mm {
+        if in_band(curves.freq[i], EXC_WINDOW) && e > s.excursion_max_mm {
             s.excursion_max_mm = e;
             s.excursion_max_freq = curves.freq[i];
+        }
+    }
+
+    // Ход на частоте настройки: минимум между пиками |Z| — проектная точка.
+    if let Some(fb) = tuning_hz {
+        if let Some(i) = curves
+            .freq
+            .iter()
+            .enumerate()
+            .min_by(|a, b| (a.1 - fb).abs().total_cmp(&(b.1 - fb).abs()))
+            .map(|(i, _)| i)
+        {
+            s.excursion_at_tuning = Some(curves.excursion_mm[i]);
         }
     }
 
@@ -221,6 +275,83 @@ pub fn summarize(curves: &Curves) -> Summary {
         }
     }
     s
+}
+
+/// Предельные напряжения: до Xmax, до скорости порта, до тепловой границы.
+///
+/// Система линейна по напряжению: достаточно пересчитать текущие кривые
+/// (получены при `voltage`) пропорционально.
+pub fn compute_limits(
+    curves: &Curves,
+    voltage: f64,
+    xmax_mm: f64,
+    pe_w: f64,
+    z_min_ohm: f64,
+) -> Limits {
+    let mut lim = Limits::default();
+    if !(voltage > 0.0) {
+        return lim;
+    }
+
+    // Минимальное допустимое напряжение по каждой частоте окна.
+    if xmax_mm > 0.0 {
+        let mut best: Option<(f64, f64)> = None;
+        for (i, &e) in curves.excursion_mm.iter().enumerate() {
+            let f = curves.freq[i];
+            if !(LIMIT_WINDOW.0..=LIMIT_WINDOW.1).contains(&f) || e <= 1e-9 {
+                continue;
+            }
+            let v = voltage * xmax_mm / e;
+            if best.is_none_or(|(bv, _)| v < bv) {
+                best = Some((v, f));
+            }
+        }
+        lim.v_xmax = best;
+    }
+    if let Some(vel) = &curves.port_vel_m_s {
+        let mut best: Option<(f64, f64)> = None;
+        for (i, &v_) in vel.iter().enumerate() {
+            let f = curves.freq[i];
+            if !(LIMIT_WINDOW.0..=LIMIT_WINDOW.1).contains(&f) || v_ <= 1e-9 {
+                continue;
+            }
+            let v = voltage * PORT_VEL_LIMIT_M_S / v_;
+            if best.is_none_or(|(bv, _)| v < bv) {
+                best = Some((v, f));
+            }
+        }
+        lim.v_port = best;
+    }
+    if pe_w > 0.0 && z_min_ohm > 0.0 {
+        lim.v_thermal = Some((pe_w * z_min_ohm).sqrt());
+    }
+
+    // Самое строгое ограничение
+    let mut min_v = f64::INFINITY;
+    let mut kind = LimitKind::None;
+    if let Some((v, _)) = lim.v_xmax {
+        if v < min_v {
+            min_v = v;
+            kind = LimitKind::Xmax;
+        }
+    }
+    if let Some((v, _)) = lim.v_port {
+        if v < min_v {
+            min_v = v;
+            kind = LimitKind::Port;
+        }
+    }
+    if let Some(v) = lim.v_thermal {
+        if v < min_v {
+            min_v = v;
+            kind = LimitKind::Thermal;
+        }
+    }
+    if min_v.is_finite() {
+        lim.v_limit = Some(min_v);
+        lim.limiting = kind;
+    }
+    lim
 }
 
 /// Первое пересечение уровня `level` снизу вверх (нижняя частота среза).
@@ -267,7 +398,7 @@ mod tests {
         };
         let cfg = SimConfig::default();
         let curves = simulate(&d, &b, &cfg);
-        let s = summarize(&curves);
+        let s = summarize(&curves, None);
 
         // f3 = fc·sqrt( sqrt(a²+1) − a ), a = 1 − 1/(2Qtc²)
         // (для Qtc < 0.707 срез лежит выше fc)
@@ -363,8 +494,8 @@ mod tests {
         );
 
         // ФИ расширяет бас вниз при том же объёме
-        let f3_sealed = summarize(&sealed).f3_low.unwrap();
-        let f3_vented = summarize(&vented).f3_low.unwrap();
+        let f3_sealed = summarize(&sealed, None).f3_low.unwrap();
+        let f3_vented = summarize(&vented, None).f3_low.unwrap();
         assert!(
             f3_vented < f3_sealed - 8.0,
             "f3 ФИ {f3_vented:.1} Гц должна быть заметно ниже ЗЯ {f3_sealed:.1} Гц"
@@ -403,5 +534,93 @@ mod tests {
         assert!(curves.group_delay_ms.iter().all(|t| t.is_finite()));
         let peak = curves.group_delay_ms.iter().cloned().fold(0.0f64, f64::max);
         assert!(peak > 5.0, "пик ГЗ {peak:.1} мс — подозрительно мал");
+    }
+
+    #[test]
+    fn summary_windows_are_meaningful() {
+        // Максимумы ищутся в рабочих полосах, а не на краях сетки
+        let d = Driver::default();
+        let b = VentedBox {
+            vb: 50.0,
+            fb: 35.0,
+            ..Default::default()
+        };
+        let curves = simulate(&d, &b, &SimConfig::default());
+        let s = summarize(&curves, Some(b.fb));
+
+        assert!(
+            (15.0..=500.0).contains(&s.z_max_freq) && s.z_max_freq < 200.0,
+            "|Z|max на {} Гц — должен быть резонанс системы, не ВЧ-рост Le",
+            s.z_max_freq
+        );
+        assert!(
+            (15.0..=300.0).contains(&s.excursion_max_freq),
+            "ход макс на {} Гц — вне окна",
+            s.excursion_max_freq
+        );
+        // на настройке ход минимален (порт разгружает диффузор)
+        let efb = s.excursion_at_tuning.expect("ход @ Fb");
+        assert!(
+            efb < s.excursion_max_mm * 0.8,
+            "ход @ Fb {efb:.2} мм vs макс {} мм",
+            s.excursion_max_mm
+        );
+    }
+
+    #[test]
+    fn limits_linear_and_identify_bottleneck() {
+        let d = Driver::default();
+        let b = VentedBox {
+            vb: 50.0,
+            fb: 35.0,
+            ..Default::default()
+        };
+        let cfg = SimConfig::default();
+        let curves = simulate(&d, &b, &cfg);
+        let s = summarize(&curves, Some(b.fb));
+        let lim = compute_limits(&curves, cfg.voltage, d.xmax, d.pe, s.z_min);
+
+        assert!(lim.v_limit.is_some());
+        let (v1, f1) = lim.v_xmax.expect("v_xmax");
+        assert!((15.0..=500.0).contains(&f1));
+
+        // Линейность: при другом напряжении предельное то же
+        let cfg2 = SimConfig {
+            voltage: 5.66,
+            ..Default::default()
+        };
+        let curves2 = simulate(&d, &b, &cfg2);
+        let s2 = summarize(&curves2, Some(b.fb));
+        let lim2 = compute_limits(&curves2, cfg2.voltage, d.xmax, d.pe, s2.z_min);
+        let (v2, _) = lim2.v_xmax.unwrap();
+        assert!((v1 - v2).abs() / v1 < 0.01, "{v1:.2} vs {v2:.2}");
+
+        // При v_xmax максимум хода в окне равен Xmax (±2%)
+        let cfgx = SimConfig {
+            voltage: v1,
+            ..Default::default()
+        };
+        let cx = simulate(&d, &b, &cfgx);
+        let sx = summarize(&cx, Some(b.fb));
+        assert!(
+            (sx.excursion_max_mm / d.xmax - 1.0).abs() < 0.02,
+            "ход при v_xmax: {} мм vs Xmax {} мм",
+            sx.excursion_max_mm,
+            d.xmax
+        );
+
+        // Узкий порт: ограничивает скорость воздуха, а не Xmax
+        let narrow = VentedBox {
+            vb: 50.0,
+            fb: 35.0,
+            port: Some(crate::port::PortSpec::new(
+                crate::port::PortGeometry::Round { diameter_mm: 30.0 },
+            )),
+            ..Default::default()
+        };
+        let cn = simulate(&d, &narrow, &SimConfig::default());
+        let sn = summarize(&cn, Some(narrow.fb));
+        let ln = compute_limits(&cn, 2.83, d.xmax, d.pe, sn.z_min);
+        assert_eq!(ln.limiting, LimitKind::Port);
     }
 }

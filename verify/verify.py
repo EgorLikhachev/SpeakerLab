@@ -194,6 +194,42 @@ def main():
     check("SPL(полоса) = 112+10lg(η₀)+10lg(V²/Re)", abs(expected - got) < 1.5,
           f"теория {expected:.2f} vs симуляция {got:.2f} дБ")
 
+    print("== 8. Метрики в рабочих окнах и предельные напряжения ==")
+    check("|Z|max в окне 15–500 Гц (резонанс, не рост Le)",
+          15 <= v["z_max_freq"] <= 500 and v["z_max_freq"] < 200,
+          f"{v['z_max_freq']:.1f} Гц")
+    check("Максимум хода в окне 15–300 Гц",
+          15 <= v["exc_max_freq"] <= 300,
+          f"{v['exc_max_freq']:.1f} Гц")
+    efb = v["exc_at_fb"]
+    check("Ход на Fb заметно меньше максимума (порт разгружает)",
+          efb is not None and efb < 0.8 * v["exc_max"],
+          f"{efb:.2f} vs {v['exc_max']:.2f} мм")
+
+    # Независимый расчёт v_xmax из собственной кривой хода (та же линейность,
+    # другой код) + сквозная проверка: при v_xmax максимум хода == Xmax
+    exc_py_arr = np.array(exc_all)
+    band_mask = (fv >= 15) & (fv <= 500)
+    idx = np.where(band_mask & (exc_py_arr > 1e-9))[0]
+    ratios = data["xmax_mm"] / exc_py_arr[idx]
+    j = idx[np.argmin(ratios)]
+    v_xmax_py = voltage * ratios.min()
+    v_xmax_dump = data["limits"]["v_xmax"][0]
+    check("v_xmax совпадает с независимым расчётом",
+          abs(v_xmax_py - v_xmax_dump) / v_xmax_dump < 0.01,
+          f"{v_xmax_py:.3f} vs {v_xmax_dump:.3f} В")
+
+    # Сквозная: симуляция при v_xmax → максимум хода == Xmax ±2%
+    za_e, zp_e = vented_za(p0, v["vb_l"], v["fb"], v["ql"], wv)
+    exc_at_limit = []
+    for k in np.where(band_mask)[0]:
+        _, _, vel = solve(p0, za_e[k], wv[k], v_xmax_py)
+        exc_at_limit.append(abs(vel) / wv[k] * 1e3)
+    exc_peak = max(exc_at_limit)
+    check("При v_xmax максимум хода = Xmax (±2%)",
+          abs(exc_peak / data["xmax_mm"] - 1.0) < 0.02,
+          f"{exc_peak:.3f} мм vs Xmax {data['xmax_mm']} мм")
+
     print()
     failed = sum(1 for _, ok, _ in results if not ok)
     total = len(results)

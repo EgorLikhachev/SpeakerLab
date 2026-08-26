@@ -213,7 +213,7 @@ mod tests {
         let d = Driver::default();
         let b = Bandpass4::default();
         let curves = simulate(&d, &b, &SimConfig::default());
-        let s = summarize(&curves);
+        let s = summarize(&curves, None);
         // полоса среза с двух сторон определена
         let lo = s.f3_low.expect("низ есть");
         let hi = s.f3_high.expect("верх есть");
@@ -254,7 +254,7 @@ mod tests {
         let d = Driver::default();
         let b6 = Bandpass6::default();
         let curves = simulate(&d, &b6, &SimConfig::default());
-        let s = summarize(&curves);
+        let s = summarize(&curves, None);
         assert!(s.f3_high.is_some());
     }
 }

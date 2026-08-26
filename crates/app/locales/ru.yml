@@ -186,3 +186,13 @@ lib.import: Импорт JSON…
 lib.export: Экспорт JSON…
 
 sim.no_data: Введите корректные T/S-параметры динамика
+sum.exc_at_fb: "Ход @ Fb"
+sum.vlimit: "V пред."
+limit.none: "—"
+limit.xmax: "лимит Xmax"
+limit.port: "лимит скорости порта"
+limit.thermal: "лимит мощности"
+warn.overlimit: "⚠ Напряжение %{v} В выше предельного %{limit} В (%{kind})"
+unit.hz: "Гц"
+unit.v: "В"
+unit.w: "Вт"

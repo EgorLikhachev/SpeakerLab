@@ -186,3 +186,13 @@ lib.import: Import JSON…
 lib.export: Export JSON…
 
 sim.no_data: Enter valid Thiele-Small parameters
+sum.exc_at_fb: "Exc @ Fb"
+sum.vlimit: "V limit"
+limit.none: "—"
+limit.xmax: "Xmax limit"
+limit.port: "port velocity limit"
+limit.thermal: "power limit"
+warn.overlimit: "⚠ Voltage %{v} V exceeds the limit of %{limit} V (%{kind})"
+unit.hz: "Hz"
+unit.v: "V"
+unit.w: "W"

@@ -8,7 +8,9 @@ use speakerlab_acoustics::circuit::EnclosureModel;
 use speakerlab_acoustics::driver::Driver;
 use speakerlab_acoustics::line::LineBox;
 use speakerlab_acoustics::passive::PassiveBox;
-use speakerlab_acoustics::response::{simulate, summarize, Curves, SimConfig, Summary};
+use speakerlab_acoustics::response::{
+    compute_limits, simulate, summarize, Curves, Limits, SimConfig, Summary,
+};
 use speakerlab_acoustics::sealed::SealedBox;
 use speakerlab_acoustics::vented::VentedBox;
 
@@ -46,6 +48,8 @@ pub struct App {
     /// Кэш кривых (пересчитывается при dirty)
     pub curves: Option<Curves>,
     pub summary: Option<Summary>,
+    /// Предельные напряжения (Xmax / порт / мощность)
+    pub limits: Option<Limits>,
     dirty: bool,
     /// Есть несохранённые изменения (для метки в заголовке)
     pub modified: bool,
@@ -82,6 +86,7 @@ impl App {
             sim: SimConfig::default(),
             curves: None,
             summary: None,
+            limits: None,
             dirty: true,
             modified: false,
             project_path: None,
@@ -127,7 +132,15 @@ impl App {
             return; // остаёмся dirty: параметры могут стать валидными снова
         }
         let curves = simulate(&self.driver, self.model(), &self.sim);
-        self.summary = Some(summarize(&curves));
+        let summary = summarize(&curves, self.tuning_hz());
+        self.limits = Some(compute_limits(
+            &curves,
+            self.sim.voltage,
+            self.driver.xmax,
+            self.driver.pe,
+            summary.z_min,
+        ));
+        self.summary = Some(summary);
         self.curves = Some(curves);
         self.dirty = false;
     }
@@ -166,6 +179,17 @@ impl App {
                     .unwrap_or_default()
             ),
             None => format!("SpeakerLab{dot}"),
+        }
+    }
+
+    /// Частота настройки текущего оформления (для метрики «ход @ Fb»).
+    pub fn tuning_hz(&self) -> Option<f64> {
+        match self.kind {
+            EnclosureKind::Sealed | EnclosureKind::Line => None,
+            EnclosureKind::Vented => Some(self.vented.fb),
+            EnclosureKind::Passive => Some(self.passive.tuning_hz()),
+            EnclosureKind::Bandpass4 => Some(self.bp4.fb),
+            EnclosureKind::Bandpass6 => Some(self.bp6.fb_front),
         }
     }
 
