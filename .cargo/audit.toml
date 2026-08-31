@@ -1,0 +1,7 @@
+[advisories]
+ignore = [
+    # Транзитивные зависимости egui; unmaintained, не уязвимости.
+    # Замена — на стороне egui (см. emilk/egui).
+    "RUSTSEC-2024-0436", # paste
+    "RUSTSEC-2026-0192", # ttf-parser
+]
