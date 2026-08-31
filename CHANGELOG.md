@@ -9,9 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- Baffle-step / diffraction options
-- PNG export of graphs
+- Metric/US unit system switch (display + input conversion)
 - Bundled driver database
+- Thermal power compression modelling
+
+## [0.3.0] - 2026-08-31
+
+### Added
+
+- Baffle step: enter the front baffle width and the response transitions
+  from 2π to 4π radiation below f_b = 115/W (−6 dB, classic approximation).
+- Offset driver in TL/QW/horn lines: the closed section before the driver
+  works as a parallel stub; smooths upper-mode ripple (21 → 8 dB in tests).
+- Throat chamber (series compliance) for horn/TL entries.
+- Passive-radiator excursion curve with its own Xmax limit line.
+- Separate port loss factor (Qp) for vented boxes.
+- Port air-velocity compression at high velocities (nonlinear branch
+  impedance), disabled when no port geometry is defined.
+- PNG export of the active plot (window screenshot cropped to the plot).
+- Curve table window (tabular view of all calculated curves).
+- Light/dark/system themes and UI scale (View menu), persisted.
+- Undo/redo (Ctrl+Z / Ctrl+Y) and project hotkeys (Ctrl+N/O/S).
+- Application icon (window, taskbar, exe on Windows).
+
+### Supply Chain
+
+- Dependabot (cargo + actions) and weekly cargo-audit workflow.
 
 ## [0.2.0] - 2026-08-26
 
@@ -77,6 +100,7 @@ Initial public release.
   verification (14 checks: independent circuit re-implementation,
   textbook closed-form formulas, qualitative physics signatures).
 
-[Unreleased]: https://github.com/EgorLikhachev/SpeakerLab/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/EgorLikhachev/SpeakerLab/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/EgorLikhachev/SpeakerLab/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/EgorLikhachev/SpeakerLab/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/EgorLikhachev/SpeakerLab/releases/tag/v0.1.0

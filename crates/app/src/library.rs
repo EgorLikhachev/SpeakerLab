@@ -11,11 +11,29 @@ use speakerlab_acoustics::driver::Driver;
 #[serde(default)]
 pub struct Settings {
     pub lang: String,
+    /// Тема: "dark" | "light" | "system"
+    #[serde(default = "default_theme")]
+    pub theme: String,
+    /// Масштаб интерфейса (1.0–1.6)
+    #[serde(default = "default_font_scale")]
+    pub font_scale: f32,
+}
+
+fn default_theme() -> String {
+    "dark".into()
+}
+
+fn default_font_scale() -> f32 {
+    1.2
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { lang: "ru".into() }
+        Self {
+            lang: "ru".into(),
+            theme: default_theme(),
+            font_scale: default_font_scale(),
+        }
     }
 }
 
@@ -38,9 +56,19 @@ pub fn load_settings() -> Settings {
         .unwrap_or_default()
 }
 
+pub fn save_settings_full(s: &Settings) {
+    let dir = data_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    if let Ok(json) = serde_json::to_string_pretty(s) {
+        let _ = std::fs::write(dir.join("settings.json"), json);
+    }
+}
+
+#[allow(dead_code)]
 pub fn save_settings(lang: &str) {
     let s = Settings {
         lang: lang.to_string(),
+        ..Settings::default()
     };
     let dir = data_dir();
     let _ = std::fs::create_dir_all(&dir);

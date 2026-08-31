@@ -38,6 +38,14 @@ pub enum EnclosureKind {
 
 pub struct App {
     pub lang: String,
+    /// Тема: dark | light | system
+    pub theme: String,
+    /// Масштаб интерфейса
+    pub font_scale: f32,
+    /// Undo/redo: снимки состояния (драйвер + оформления)
+    undo: Vec<ProjectSnapshot>,
+    redo: Vec<ProjectSnapshot>,
+    last_snap: std::time::Instant,
     pub driver: Driver,
     pub kind: EnclosureKind,
     pub sealed: SealedBox,
@@ -79,6 +87,96 @@ pub struct App {
     pub show_table: bool,
 }
 
+/// Снимок редактируемого состояния для undo/redo.
+pub struct ProjectSnapshot {
+    pub driver: Driver,
+    pub sealed: SealedBox,
+    pub vented: VentedBox,
+    pub passive: PassiveBox,
+    pub bp4: Bandpass4,
+    pub bp6: Bandpass6,
+    pub line: LineBox,
+    pub kind: EnclosureKind,
+}
+
+impl App {
+    /// Сохранить снимок перед изменением (для undo).
+    /// Вызывать ДО применения правки; дедуп по хэшу полей не делаем —
+    /// снимок лёгкий (десятки чисел).
+    pub fn snapshot_for_undo(&mut self) {
+        let snap = self.snapshot();
+        if let Some(last) = self.undo.last() {
+            if last.same_as(&snap) {
+                return;
+            }
+        }
+        self.undo.push(snap);
+        if self.undo.len() > 50 {
+            self.undo.remove(0);
+        }
+        self.redo.clear();
+    }
+
+    pub fn can_undo(&self) -> bool {
+        !self.undo.is_empty()
+    }
+
+    pub fn can_redo(&self) -> bool {
+        !self.redo.is_empty()
+    }
+
+    pub fn undo(&mut self) {
+        if let Some(snap) = self.undo.pop() {
+            self.redo.push(self.snapshot());
+            snap.apply(self);
+        }
+    }
+
+    pub fn redo(&mut self) {
+        if let Some(snap) = self.redo.pop() {
+            self.undo.push(self.snapshot());
+            snap.apply(self);
+        }
+    }
+
+    fn snapshot(&self) -> ProjectSnapshot {
+        ProjectSnapshot {
+            driver: self.driver.clone(),
+            sealed: self.sealed.clone(),
+            vented: self.vented.clone(),
+            passive: self.passive.clone(),
+            bp4: self.bp4.clone(),
+            bp6: self.bp6.clone(),
+            line: self.line.clone(),
+            kind: self.kind,
+        }
+    }
+}
+
+impl ProjectSnapshot {
+    fn same_as(&self, o: &ProjectSnapshot) -> bool {
+        self.driver.re == o.driver.re
+            && self.driver.le == o.driver.le
+            && self.driver.fs == o.driver.fs
+            && self.sealed.vb == o.sealed.vb
+            && self.vented.vb == o.vented.vb
+            && self.vented.fb == o.vented.fb
+            && self.kind == o.kind
+    }
+
+    fn apply(self, app: &mut App) {
+        app.driver = self.driver;
+        app.sealed = self.sealed;
+        app.vented = self.vented;
+        app.passive = self.passive;
+        app.bp4 = self.bp4;
+        app.bp6 = self.bp6;
+        app.line = self.line;
+        app.kind = self.kind;
+        app.mark_dirty();
+    }
+}
+
 /// Сохраняемое между запусками состояние (кроме размеров окна — их
 /// eframe persistence хранит сам).
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -94,7 +192,10 @@ impl App {
         let persisted: Option<AppPersist> = cc
             .storage
             .and_then(|st| eframe::get_value(st, eframe::APP_KEY));
+        let settings = library::load_settings();
         let mut app = Self {
+            theme: settings.theme.clone(),
+            font_scale: settings.font_scale,
             lang: library::load_settings().lang,
             driver: Driver::default(),
             kind: EnclosureKind::Vented,
@@ -124,6 +225,9 @@ impl App {
             plot_rect: None,
             png_path: None,
             show_table: false,
+            undo: Vec::new(),
+            redo: Vec::new(),
+            last_snap: std::time::Instant::now(),
         };
         if let Some(p) = persisted {
             if let Some(lang) = p.lang {
@@ -241,6 +345,24 @@ impl App {
         self.modified = true;
     }
 
+    /// Периодический снапшот для undo (не чаще раза в секунду при правках).
+    pub fn auto_snapshot(&mut self) {
+        if !self.modified {
+            return;
+        }
+        if let Some(last) = self
+            .last_snap
+            .elapsed()
+            .checked_sub(std::time::Duration::ZERO)
+        {
+            let _ = last;
+        }
+        if self.last_snap.elapsed().as_secs_f32() >= 1.0 {
+            self.snapshot_for_undo();
+            self.last_snap = std::time::Instant::now();
+        }
+    }
+
     /// Живой пересчёт: вызывается каждый кадр, работает только при изменениях.
     pub fn ensure_computed(&mut self) {
         if !self.dirty {
@@ -291,7 +413,26 @@ impl App {
     pub fn set_lang(&mut self, lang: &str) {
         self.lang = lang.to_string();
         rust_i18n::set_locale(lang);
-        library::save_settings(&self.lang);
+        self.save_ui_settings();
+    }
+
+    /// Тема: dark | light | system.
+    pub fn set_theme(&mut self, theme: &str) {
+        self.theme = theme.to_string();
+        self.save_ui_settings();
+    }
+
+    pub fn set_font_scale(&mut self, scale: f32) {
+        self.font_scale = scale.clamp(1.0, 1.6);
+        self.save_ui_settings();
+    }
+
+    fn save_ui_settings(&self) {
+        library::save_settings_full(&library::Settings {
+            lang: self.lang.clone(),
+            theme: self.theme.clone(),
+            font_scale: self.font_scale,
+        });
     }
 
     /// Заголовок окна.

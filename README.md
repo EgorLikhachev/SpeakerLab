@@ -46,11 +46,15 @@ runtime). Runs on Windows, Linux, and macOS as a single native binary.
   panel area.
 - **Alignment suggestions** from T/S parameters: Qtc targets for sealed
   boxes, flat/compact/EBS tunings for vented boxes, passive radiator mass.
+- **Baffle step**: enter the front baffle width for a realistic 2π→4π
+  transition (−6 dB below f_b = 115/W).
+- **Offset-driver TL and throat chamber** for horn/quarter-wave designs.
 - **Reference comparison**: remember the current curves and overlay them as
   a dashed line on every graph.
 - **Projects** (`.spkproj`) and a personal **driver library** in open JSON.
-- **CSV export** of all calculated curves.
-- **RU / EN interface** with live switching.
+- **CSV export**, **PNG plot export**, and a **curve table** window.
+- **RU / EN interface** with live switching, light/dark/system themes,
+  undo/redo (Ctrl+Z/Y) and project hotkeys (Ctrl+N/O/S).
 
 ## Screenshots
 

@@ -16,6 +16,10 @@ use crate::project;
 use crate::state::App;
 
 pub fn show(app: &mut App, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    // Горячие клавиши
+    handle_hotkeys(app, ctx);
+    app.auto_snapshot();
+
     // Живой пересчёт — до отрисовки
     app.ensure_computed();
 
@@ -123,6 +127,45 @@ fn draw_toasts(app: &mut App, ctx: &egui::Context) {
         });
 }
 
+/// Горячие клавиши: Ctrl+Z/Y — undo/redo, Ctrl+N/O/S — проект.
+fn handle_hotkeys(app: &mut App, ctx: &egui::Context) {
+    let ctrl = ctx.input(|i| i.modifiers.ctrl);
+    if !ctrl {
+        return;
+    }
+    let (z, y, n, o, s_) = ctx.input(|i| {
+        (
+            i.key_pressed(egui::Key::Z),
+            i.key_pressed(egui::Key::Y),
+            i.key_pressed(egui::Key::N),
+            i.key_pressed(egui::Key::O),
+            i.key_pressed(egui::Key::S),
+        )
+    });
+    if z && app.can_undo() {
+        app.undo();
+    } else if y && app.can_redo() {
+        app.redo();
+    } else if n {
+        app.reset();
+    } else if o {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("SpeakerLab", &["spkproj"])
+            .pick_file()
+        {
+            match project::load(&path) {
+                Ok(p) => {
+                    p.apply_to(app);
+                    app.project_path = Some(path);
+                }
+                Err(e) => app.push_toast(t!("err.open_project", msg = e.to_string()).to_string()),
+            }
+        }
+    } else if s_ {
+        save_project(app);
+    }
+}
+
 fn top_bar(app: &mut App, ctx: &egui::Context) {
     egui::TopBottomPanel::top("menu").show(ctx, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
@@ -192,6 +235,31 @@ fn top_bar(app: &mut App, ctx: &egui::Context) {
                         let _ = project::export_csv(app, &path);
                     }
                     ui.close();
+                }
+            });
+
+            ui.menu_button(t!("menu.view"), |ui| {
+                ui.label(t!("view.theme").to_string());
+                for (key, label) in [
+                    ("dark", t!("theme.dark").to_string()),
+                    ("light", t!("theme.light").to_string()),
+                    ("system", t!("theme.system").to_string()),
+                ] {
+                    if ui.radio(app.theme == key, label).clicked() {
+                        app.set_theme(key);
+                    }
+                }
+                ui.separator();
+                ui.label(t!("view.scale").to_string());
+                let mut scale = app.font_scale;
+                let r = ui.add(
+                    egui::DragValue::new(&mut scale)
+                        .speed(0.05)
+                        .range(1.0..=1.6)
+                        .fixed_decimals(2),
+                );
+                if r.changed() {
+                    app.set_font_scale(scale);
                 }
             });
 
